@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 from app.channels.base import Button, OutboundMessage
 from app.llm.client import LLM, LLMError
 from app.llm.extraction import analyze_message, clean_size
-from app.services import delivery, escalation, order_totals
+from app.services import delivery, escalation, order_totals, orders
 from app.services.product_matching import clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
 
@@ -33,7 +33,6 @@ YES_NO_BUTTONS = [Button(id="yes", title="نعم"), Button(id="no", title="لا"
 WELCOME = "أهلاً فيك! شو بتحب تطلب؟ اكتبلي اسم المنتج واللون والمقاس."
 ASK_ADDRESS = "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان."
 ASK_PHONE = "شو رقم تلفونك للتواصل؟"
-CONFIRM_PENDING = "تمام، وصلنا تأكيدك ✓ رح نثبّت الطلب ونبعتلك رقمه."  # replaced by real order creation in 1.9
 
 
 # --- state ---------------------------------------------------------------------
@@ -77,6 +76,9 @@ class BotState(BaseModel):
     zone_id: UUID | None = None
     zone_name: str | None = None
     phone: str | None = None
+    # Total shown in the last summary (computed by code). Confirm re-computes and, if it
+    # differs (price/offer changed meanwhile), shows a fresh summary instead of ordering.
+    quoted_total: Decimal | None = None
 
     @classmethod
     def load(cls, raw) -> "BotState":
@@ -91,6 +93,7 @@ class Context:
     conn: asyncpg.Connection
     store_id: UUID
     conversation_id: UUID
+    customer_id: UUID
     llm: LLM | None
     currency: str
     large_item_qty: int
@@ -220,7 +223,7 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
             return Outcome(_reply("تم إلغاء الطلب. إذا بدك تطلب إشي تاني أنا جاهز."), _reset())
         return Outcome(_reply("ما في طلب مفتوح حالياً. شو بتحب تطلب؟"), state)
     if state.mode == "awaiting_confirmation" and action == "confirm":
-        return Outcome(_reply(CONFIRM_PENDING), state)
+        return await _confirm(ctx, state, notes)
     if state.mode == "awaiting_confirmation" and action == "edit":
         state.mode = "collecting"
         state.pending = None
@@ -247,7 +250,7 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
         return Outcome(_reply("تم إلغاء الطلب. إذا بدك تطلب إشي تاني أنا جاهز."), _reset())
     if intent == "confirm" or analysis.wants_to_confirm:
         if state.mode == "awaiting_confirmation":
-            return Outcome(_reply(CONFIRM_PENDING), state)
+            return await _confirm(ctx, state, notes)
         if state.pending and state.pending.kind == "stock":
             return await _answer_stock(ctx, state, True, notes)
     if intent == "question" and not analysis.items:
@@ -508,5 +511,48 @@ async def _summary(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         f"العنوان: {state.address}", f"الهاتف: {state.phone}",
         "بتأكد الطلب؟",
     ])
-    state.mode, state.pending = "awaiting_confirmation", None
+    state.mode, state.pending, state.quoted_total = "awaiting_confirmation", None, totals.total
     return Outcome(_reply(_with_notes(notes, summary), CONFIRM_BUTTONS), state)
+
+
+async def _confirm(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
+    """Customer pressed confirm: re-check everything in code, then place the order atomically (1.9)."""
+    fee = await _zone_fee(ctx, state.zone_id) if state.zone_id else None
+    if fee is None or not (state.items and state.address and state.phone):
+        state.mode = "collecting"
+        return await _advance(ctx, state, notes)
+    try:
+        totals = await order_totals.compute_totals(ctx.conn, ctx.store_id, _lines(state), fee)
+    except order_totals.VariantGoneError:
+        return await _summary(ctx, state, notes)  # drops the gone item with a note, re-quotes
+    if state.quoted_total is None or totals.total != state.quoted_total:
+        notes.append("انتبه: الأسعار أو العروض تغيّرت من آخر ملخص. هاد الملخص المحدّث:")
+        return await _summary(ctx, state, notes)
+
+    try:
+        placed = await orders.place_order(
+            ctx.conn, ctx.store_id, customer_id=ctx.customer_id, conversation_id=ctx.conversation_id,
+            totals=totals, zone_id=state.zone_id, address=state.address, phone=state.phone,
+            notes={i.variant_id: i.notes for i in state.items},
+        )
+    except orders.InsufficientStockError as short:
+        # Someone bought it meanwhile. Nothing was saved; offer what's left.
+        item = next(i for i in state.items if i.variant_id == short.variant_id)
+        state.items = [i for i in state.items if i.variant_id != short.variant_id]
+        state.mode = "collecting"
+        if short.available <= 0:
+            notes.append(f"للأسف {_label(item)} خلص هلأ من المخزون، شلناه من الطلب.")
+        else:
+            state.pending = Pending(
+                kind="stock", stock_item=item, available=short.available,
+                question=f"للأسف ما ضل من {_label(item)} غير {short.available}. بتحب تاخد {short.available}؟",
+            )
+        return await _advance(ctx, state, notes)
+
+    text = "\n".join([
+        "تم تأكيد طلبك ✓",
+        f"رقم الطلب: #{placed.order_number}",
+        f"الإجمالي: {_money(placed.total, ctx.currency)}",
+        f"رح نتواصل معك على {state.phone} لترتيب التوصيل. شكراً إلك!",
+    ])
+    return Outcome(_reply(text), _reset())

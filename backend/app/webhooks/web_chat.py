@@ -124,6 +124,37 @@ async def post_message(
     return MessageAck(status="received")
 
 
+class ConversationState(BaseModel):
+    # "bot" | "waiting_owner" | "owner" | "closed", or "none" before the first message.
+    status: str
+    bot_replies: bool  # False when paused or handed to the owner: the simulator shows a notice
+
+
+@router.get("/conversation", response_model=ConversationState)
+async def get_conversation_state(
+    store_id: UUID,
+    x_session_token: Annotated[str | None, Header()] = None,
+    settings: Settings = Depends(get_settings),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> ConversationState:
+    """Whether the bot is still answering this session's conversation."""
+    session_id = _session(settings, store_id, x_session_token)
+    row = await conn.fetchrow(
+        """
+        select c.status::text as status, c.bot_paused
+          from conversations c join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
+         where c.store_id = $1 and cu.channel = 'web' and cu.external_id = $2
+         order by c.last_message_at desc
+         limit 1
+        """,
+        store_id, session_id,
+    )
+    if row is None:
+        return ConversationState(status="none", bot_replies=True)
+    replies = not row["bot_paused"] and row["status"] not in ("owner", "waiting_owner")
+    return ConversationState(status=row["status"], bot_replies=replies)
+
+
 @router.get("/messages", response_model=list[ChatMessage])
 async def get_messages(
     store_id: UUID,

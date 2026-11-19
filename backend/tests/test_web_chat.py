@@ -147,3 +147,15 @@ async def test_message_validation(db_tx, body):
         r = await c.post(f"/webhooks/web/{store}/messages", headers=h, json=body)
     assert r.status_code == 422
     assert await db_tx.fetchval("select count(*) from messages where store_id = $1", store) == 0
+
+
+async def test_conversation_state_shows_handover(db_tx):
+    store = await new_store(db_tx)
+    async with client_for(db_tx) as c:
+        h, _ = await start(c, store)
+        assert (await c.get(f"/webhooks/web/{store}/conversation", headers=h)).json() == {"status": "none", "bot_replies": True}
+        await send(c, store, h, "مرحبا")
+        assert (await c.get(f"/webhooks/web/{store}/conversation", headers=h)).json() == {"status": "bot", "bot_replies": True}
+        await db_tx.execute("update conversations set status = 'waiting_owner' where store_id = $1", store)
+        assert (await c.get(f"/webhooks/web/{store}/conversation", headers=h)).json() == {"status": "waiting_owner", "bot_replies": False}
+        assert (await c.get(f"/webhooks/web/{store}/conversation", headers={"X-Session-Token": "bad"})).status_code == 401

@@ -60,7 +60,7 @@ async def respond(
         # so each step sees the state the previous one saved.
         row = await conn.fetchrow(
             """
-            select c.bot_paused or c.status in ('owner', 'waiting_owner') as paused, c.bot_state,
+            select c.bot_paused or c.status in ('owner', 'waiting_owner') as paused, c.bot_state, c.customer_id,
                    cu.phone, s.currency, s.large_order_item_qty, s.large_order_total_qty, s.large_order_amount
               from conversations c
               join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
@@ -76,7 +76,8 @@ async def respond(
 
         raw_state = json.loads(row["bot_state"]) if isinstance(row["bot_state"], str) else row["bot_state"]
         ctx = order_flow.Context(
-            conn=conn, store_id=store_id, conversation_id=conversation_id, llm=llm, currency=row["currency"],
+            conn=conn, store_id=store_id, conversation_id=conversation_id, customer_id=row["customer_id"],
+            llm=llm, currency=row["currency"],
             large_item_qty=row["large_order_item_qty"], large_total_qty=row["large_order_total_qty"],
             large_amount=row["large_order_amount"], customer_phone=row["phone"],
         )

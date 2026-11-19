@@ -17,12 +17,14 @@ from app.services import pricing
 @dataclass(frozen=True)
 class Line:
     variant_id: UUID
+    product_id: UUID
     product_name: str
     variant_name: str
     quantity: int
     list_price: Decimal
     unit_price: Decimal
     offer_name: str | None
+    offer_id: UUID | None
     line_total: Decimal
 
 
@@ -32,6 +34,7 @@ class Totals:
     subtotal: Decimal
     delivery_fee: Decimal
     free_delivery_offer: str | None
+    free_delivery_offer_id: UUID | None
     total: Decimal
 
 
@@ -65,9 +68,11 @@ async def compute_totals(
             raise VariantGoneError(str(variant_id))
         price = pricing.variant_price(row["base_price"], row["product_id"], variant_id, offers, now)
         lines.append(Line(
-            variant_id=variant_id, product_name=row["product_name"], variant_name=row["variant_name"],
+            variant_id=variant_id, product_id=row["product_id"], product_name=row["product_name"],
+            variant_name=row["variant_name"],
             quantity=quantity, list_price=price.list_price, unit_price=price.unit_price,
             offer_name=price.offer.name if price.offer else None,
+            offer_id=price.offer.id if price.offer else None,
             line_total=pricing.money(price.unit_price * quantity),
         ))
 
@@ -76,6 +81,7 @@ async def compute_totals(
     return Totals(
         lines=lines, subtotal=subtotal, delivery_fee=delivery.fee,
         free_delivery_offer=delivery.offer.name if delivery.offer else None,
+        free_delivery_offer_id=delivery.offer.id if delivery.offer else None,
         total=pricing.money(subtotal + delivery.fee),
     )
 

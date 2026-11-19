@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { fetchMessages, sendMessage, startSession, type ChatMessage } from '../lib/webchat'
+import { fetchConversationState, fetchMessages, sendMessage, startSession, type ChatMessage } from '../lib/webchat'
 import { useStore } from '../store/StoreProvider'
 
 const POLL_MS = 1500
@@ -37,6 +37,7 @@ export default function SimulatorPage() {
   const [failed, setFailed] = useState<{ text: string; clientId: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
+  const [handedOver, setHandedOver] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const begin = useCallback(async (name: string) => {
@@ -48,6 +49,7 @@ export default function SimulatorPage() {
       save(storageKey, saved)
       setSession(saved)
       setMessages([])
+      setHandedOver(false)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -60,7 +62,12 @@ export default function SimulatorPage() {
   const refresh = useCallback(async () => {
     if (!store || !session) return
     try {
-      setMessages(await fetchMessages(store.id, session.token))
+      const [msgs, conv] = await Promise.all([
+        fetchMessages(store.id, session.token),
+        fetchConversationState(store.id, session.token),
+      ])
+      setMessages(msgs)
+      setHandedOver(!conv.bot_replies)
     } catch (e) {
       // An old token (e.g. the secret changed) -> start a fresh session.
       if ((e as { status?: number }).status === 401) begin(session.name)
@@ -142,6 +149,13 @@ export default function SimulatorPage() {
           ))}
           <div ref={bottomRef} />
         </div>
+
+        {handedOver && (
+          <p className="msg warn-msg" role="status">
+            هالمحادثة تحوّلت لصاحب المتجر، فالبوت ما رح يرد عليها. الرد بيكون من صفحة المحادثات (المهمة 1.12).
+            {' '}<button type="button" className="link" onClick={() => begin(session?.name ?? 'عميل تجريبي')}>ابدأ محادثة جديدة</button>
+          </p>
+        )}
 
         {error && (
           <p className="msg error" role="alert">

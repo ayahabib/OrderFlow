@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.order_flow import ASK_ADDRESS, ASK_PHONE, CONFIRM_PENDING, WELCOME, button_action, parse_options, parse_phone, yes_no
+from app.engine.order_flow import ASK_ADDRESS, ASK_PHONE, WELCOME, button_action, parse_options, parse_phone, yes_no
 from app.llm.client import LLMError
 from app.llm.schemas import ExtractedItem
 from app.services.excel_import import plan_from_file
@@ -85,13 +85,23 @@ async def test_full_order_from_two_dresses_to_confirmation(db_tx):
         assert [b["id"] for b in r["buttons"]] == ["confirm", "edit", "cancel"]
 
         r = await chat.say("تأكيد")
-        assert r["content"] == CONFIRM_PENDING
+        assert r["content"].startswith("تم تأكيد طلبك ✓")
+        assert "رقم الطلب: #1" in r["content"] and "الإجمالي: 250.00 ILS" in r["content"]
 
     # Only two messages needed the LLM; the address one was told what the bot had asked.
     assert len(llm.calls) == 2
     assert ASK_ADDRESS in llm.calls[1]["user"]
+
+    # Task 1.9: the order is saved with the shown total, stock is deducted, the draft is cleared.
+    order = await db_tx.fetchrow("select id, order_number, subtotal, delivery_fee, total, delivery_address from orders where store_id = $1", store)
+    assert (order["order_number"], str(order["subtotal"]), str(order["delivery_fee"]), str(order["total"])) == (1, "240.00", "10.00", "250.00")
+    assert order["delivery_address"] == "نابلس، شارع فيصل"
+    stock = await db_tx.fetchval(
+        "select stock_quantity from product_variants v join products p on p.id = v.product_id "
+        "where v.store_id = $1 and p.name = 'فستان صيفي' and v.name = 'أحمر / M'", store)
+    assert stock == 2                                   # 4 - 2
     conv = await conversation(db_tx, store)
-    assert conv["status"] == "bot" and '"awaiting_confirmation"' in conv["bot_state"]
+    assert conv["status"] == "bot" and json.loads(conv["bot_state"])["items"] == []
 
 
 @pytest.mark.db
@@ -318,3 +328,60 @@ def test_parse_options():
     assert parse_options("حمرا", values) == {"color": "أحمر"}
     assert parse_options("أخضر", values) is None             # not offered -> LLM decides
     assert parse_options("بس الجودة سيئة", values) is None  # extra words -> LLM (may be a complaint)
+
+
+# --- confirm (task 1.9) ------------------------------------------------------------------
+
+async def reach_summary(chat):
+    r = await chat.say("بدي شنطة لنابلس 0599123456")
+    assert "الإجمالي: 100.00 ILS" in r["content"]
+
+
+SCRIPT = {"بدي شنطة لنابلس 0599123456": analysis(items=[item("شنطة")], address_text="نابلس", phone="0599123456")}
+
+
+@pytest.mark.db
+async def test_price_change_after_summary_shows_new_summary(db_tx):
+    store = await new_store(db_tx)
+    async with client_for(db_tx, llm=ScriptedLLM(SCRIPT)) as c:
+        chat = Chat(c, store)
+        await reach_summary(chat)
+        await db_tx.execute("update products set price = 95 where store_id = $1 and name = 'حقيبة جلد'", store)
+        r = await chat.say("تأكيد")
+        assert "الأسعار أو العروض تغيّرت" in r["content"] and "الإجمالي: 105.00 ILS" in r["content"]
+        assert await db_tx.fetchval("select count(*) from orders where store_id = $1", store) == 0
+        r = await chat.say("تأكيد")                       # confirms the new total
+        assert "رقم الطلب: #1" in r["content"] and "105.00" in r["content"]
+
+
+@pytest.mark.db
+async def test_stock_gone_between_summary_and_confirm(db_tx):
+    store = await new_store(db_tx)
+    async with client_for(db_tx, llm=ScriptedLLM(SCRIPT)) as c:
+        chat = Chat(c, store)
+        await reach_summary(chat)
+        await db_tx.execute(
+            "update product_variants set stock_quantity = 0 where store_id = $1 and product_id = "
+            "(select id from products where store_id = $1 and name = 'حقيبة جلد')", store)
+        r = await chat.say("تأكيد")
+    assert "خلص هلأ من المخزون" in r["content"]
+    assert await db_tx.fetchval("select count(*) from orders where store_id = $1", store) == 0
+
+
+@pytest.mark.db
+async def test_less_stock_at_confirm_offers_what_is_left(db_tx):
+    store = await new_store(db_tx)
+    script = {"بدي 3 شنط لنابلس 0599123456": analysis(items=[item("شنطة", qty=3)], address_text="نابلس", phone="0599123456")}
+    async with client_for(db_tx, llm=ScriptedLLM(script)) as c:
+        chat = Chat(c, store)
+        r = await chat.say("بدي 3 شنط لنابلس 0599123456")
+        assert "الإجمالي: 280.00 ILS" in r["content"]      # 3*90 + 10
+        await db_tx.execute(
+            "update product_variants set stock_quantity = 2 where store_id = $1 and product_id = "
+            "(select id from products where store_id = $1 and name = 'حقيبة جلد')", store)
+        r = await chat.say("تأكيد")
+        assert "غير 2" in r["content"] and [b["id"] for b in r["buttons"]] == ["yes", "no"]
+        r = await chat.say("نعم")
+        assert "الإجمالي: 190.00 ILS" in r["content"]      # 2*90 + 10, fresh summary
+        r = await chat.say("تأكيد")
+        assert "رقم الطلب: #1" in r["content"]

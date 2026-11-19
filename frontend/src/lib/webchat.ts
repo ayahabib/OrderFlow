@@ -40,3 +40,8 @@ export const sendMessage = (storeId: string, token: string, text: string, client
 
 export const fetchMessages = (storeId: string, token: string) =>
   call<ChatMessage[]>(`/webhooks/web/${storeId}/messages`, { headers: { 'X-Session-Token': token } })
+
+export type ConversationState = { status: string; bot_replies: boolean }
+
+export const fetchConversationState = (storeId: string, token: string) =>
+  call<ConversationState>(`/webhooks/web/${storeId}/conversation`, { headers: { 'X-Session-Token': token } })
