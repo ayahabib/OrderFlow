@@ -156,8 +156,8 @@
 | Database | PostgreSQL على Supabase + pgvector |
 | Auth + Storage | Supabase Auth + Storage |
 | قنوات الرسائل | WhatsApp Cloud API (مستهدفة)، Telegram Bot API، محاكي شات ويب، عبر Channel Adapter |
-| LLM | Gemini Flash / Flash-Lite (Google AI Studio، خطة مجانية) مع Structured Output و Function Calling |
-| Embeddings | Gemini Embedding |
+| LLM | OpenAI API (الموديل من متغير البيئة `OPENAI_MODEL`) مع Structured Output و Function Calling |
+| Embeddings | OpenAI `text-embedding-3-small` (بعد 768 عبر `dimensions`) |
 | Dashboard | Recharts |
 | الإشعارات | Telegram Bot (رسالة لصاحب المتجر) |
 
@@ -181,12 +181,12 @@
 | ما في بيانات حقيقية للتنبؤ | توليد بيانات تجريبية (synthetic) |
 | حدود الخدمات المجانية | مراجعة حدود كل خدمة قبل العرض |
 | ربط واتساب محتاج موافقات وتسعير متغير | البدء برقم تجريبي، وتصميم Channel Adapter، ومحاكي ويب كبديل للعرض |
-| بيانات عملاء حقيقية على خطة LLM مجانية | استخدام بيانات تجريبية ومراجعة شروط الاستخدام |
+| بيانات عملاء حقيقية مبعوتة للـ LLM بالتطوير | استخدام بيانات تجريبية ومراجعة شروط الاستخدام |
 
 ## 9. القرارات المحسومة
 
 1. Backend: FastAPI (Python).
-2. LLM: Gemini Flash / Flash-Lite (خطة مجانية) مع Structured Output و Function Calling.
+2. LLM: OpenAI API مع Structured Output و Function Calling (بدّلنا من Gemini). مدفوع حسب الاستخدام، فلازم نراقب التكلفة.
 3. الإشعارات لصاحب المتجر: عبر Telegram.
 4. المستخدمين: مستخدم واحد لكل متجر (بدون موظفين بالـ MVP).
 5. القنوات: WhatsApp (Cloud API) هي القناة المستهدفة للمنتج. نطوّر ونختبر على Telegram + محاكي شات داخل الويب، عبر Channel Adapter موحّد.

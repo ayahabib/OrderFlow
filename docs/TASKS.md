@@ -39,7 +39,7 @@
   - `channels/base.py`، adapter الويب، `POST /webhooks/web/{store_id}`، وصفحة WebChatSimulator.
   - حفظ customers/conversations/messages، ومنع تكرار الرسائل.
   - **Done when:** كتابة رسالة بالمحاكي بتنحفظ، وبيرجع رد ثابت مؤقت (echo).
-- [ ] **1.6 طبقة الـ LLM (Gemini) + الاستخراج**
+- [ ] **1.6 طبقة الـ LLM (OpenAI) + الاستخراج**
   - `llm/client.py` (retries، timeout، logging)، `schemas.py`، `extraction.py`.
   - الاستخراج لـ JSON حسب `ARCHITECTURE.md` قسم 5، وفشل الـ LLM ← خطأ واضح (للتحويل لاحقاً).
   - **Done when:** `eval/run_eval.py` بيشتغل على `extraction_testset.jsonl` (20+ رسالة بلهجات مختلفة) وبيطبع دقة كل حقل.

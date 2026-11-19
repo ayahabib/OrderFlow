@@ -21,7 +21,7 @@
 │                    FastAPI Backend                         │
 │  ┌──────────────┐  ┌───────────┐  ┌────────────────────┐  │
 │  │ Conversation  │  │ Services  │  │   LLM Service       │  │
-│  │ Engine        │─►│ orders    │  │ (Gemini wrapper)    │  │
+│  │ Engine        │─►│ orders    │  │ (OpenAI wrapper)    │  │
 │  │ (state machine│  │ inventory │◄─│ extraction / RAG /  │  │
 │  │  + rules)     │  │ knowledge │  │ tool-calling        │  │
 │  └──────────────┘  │ escalation│  └────────────────────┘  │
@@ -71,7 +71,7 @@ project/
 │   │   │   ├── rules.py             # قواعد التحويل الإجبارية
 │   │   │   ├── order_flow.py        # state machine للطلب
 │   │   │   └── qa.py                # الإجابة على الأسئلة (RAG)
-│   │   ├── llm/                     # كل التعامل مع Gemini هون فقط
+│   │   ├── llm/                     # كل التعامل مع OpenAI هون فقط
 │   │   │   ├── client.py            # retries, timeouts, logging
 │   │   │   ├── schemas.py           # Pydantic schemas للـ Structured Output
 │   │   │   ├── extraction.py
@@ -214,7 +214,7 @@ class ChannelAdapter(Protocol):
 
 `engine/qa.py`:
 
-1. توليد embedding لسؤال العميل (Gemini Embedding).
+1. توليد embedding لسؤال العميل (OpenAI `text-embedding-3-small`، `dimensions=768`).
 2. `match_knowledge(store_id, embedding, 3)`، بالإضافة لبيانات المنتجات (أسعار/توفر بنجيبها بـ SQL مباشرة، مش من الـ KB).
 3. **لو أعلى similarity ≥ العتبة:** بنعطي الـ LLM السؤال + المقاطع المسترجعة، مع تعليمات: "جاوب فقط من هالمعلومات، وإذا مش موجود الجواب قول: NOT_FOUND".
 4. **لو أقل من العتبة أو رجّع NOT_FOUND:** escalation (`low_confidence`).
@@ -287,13 +287,14 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 
 ## 10. طبقة الـ LLM
 
-كل الكود الي بيحكي مع Gemini موجود بـ `llm/` فقط:
+كل الكود الي بيحكي مع OpenAI موجود بـ `llm/` فقط (مكتبة `openai` الرسمية):
 - **Structured Output** بـ Pydantic schemas، وبنتحقق من الناتج (validate)، ولو فشل بنعيد مرة وحدة، وبعدها escalation.
 - **Retries** مع exponential backoff لأخطاء 429/5xx.
 - **Timeouts** واضحة.
 - **Logging**: الـ prompt المختصر، الناتج، الزمن، الأخطاء (بدون بيانات حساسة).
-- **تغيير الموديل** بمتغير بيئة، عشان لو تغيرت الحدود المجانية أو الأسماء ما نعدّل الكود.
-- بالخطة المجانية: تجنبي بيانات عملاء حقيقية.
+- **تغيير الموديل** بمتغير بيئة (`OPENAI_MODEL`، `OPENAI_EMBED_MODEL`)، عشان لو تغيرت الأسعار أو الأسماء ما نعدّل الكود.
+- **التكلفة**: الـ API مدفوع حسب الاستخدام. الـ unit tests بتستخدم mock، والـ eval بيتشغل عند الحاجة بس.
+- بالتطوير: تجنبي بيانات عملاء حقيقية.
 
 ## 11. الجدولة (Background Jobs)
 

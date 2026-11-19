@@ -278,7 +278,7 @@ create index kb_embedding_idx on knowledge_base using hnsw (embedding vector_cos
 create index kb_store_idx on knowledge_base (store_id);
 ```
 
-> **ملاحظة:** البعد `768` مثال. تأكدي من بعد الـ embedding الي بيرجعه الموديل الي رح تستخدميه، وبعض الموديلات بتسمح بتصغير البعد.
+> **ملاحظة:** البعد `768` لأننا بنطلب من OpenAI `text-embedding-3-small` بـ `dimensions=768` (الافتراضي 1536). لو غيّرتي الموديل أو البعد، لازم migration جديدة للعمود والدالة `match_knowledge`.
 
 ## 4. رفع Excel مع الـ Variants
 

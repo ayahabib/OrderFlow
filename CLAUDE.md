@@ -19,7 +19,7 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 - Backend: FastAPI (Python 3.11+)
 - Frontend: React + Vite
 - DB: PostgreSQL on Supabase (+ pgvector, pg_trgm), Supabase Auth
-- LLM: Gemini Flash / Flash-Lite via Google AI Studio (free tier)
+- LLM: OpenAI API (chat model from `OPENAI_MODEL`, embeddings `text-embedding-3-small` at 768 dims). Paid per use, so keep calls small
 - Channels: WhatsApp Cloud API, Telegram Bot API, web chat simulator, all behind a Channel Adapter
 
 ## How to work
@@ -49,7 +49,7 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 
 ## Conventions
 
-- Backend layout follows `docs/ARCHITECTURE.md` section 2. All Gemini calls live in `backend/app/llm/` only.
+- Backend layout follows `docs/ARCHITECTURE.md` section 2. All OpenAI calls live in `backend/app/llm/` only.
 - Pydantic models for all request/response and for LLM structured output. Validate LLM output.
 - Arabic text: normalize before search/matching (`utils/arabic.py`): unify alef forms, ta marbuta/ha, remove diacritics. Support Levantine dialect and typos.
 - Async where it matters (webhooks, LLM calls, DB).
@@ -74,7 +74,7 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 - Use a mock LLM in tests. Do not call the real API in unit tests.
 - `eval/extraction_testset.jsonl`: Arabic order messages (dialects, typos) with expected output. Report per-field accuracy.
 - Forced-escalation eval: every sensitive message must be escalated (target 100%).
-- Use synthetic data only. No real customer data on the free LLM tier.
+- Use synthetic data only. No real customer data sent to the LLM during development.
 
 ## Security checklist (run at the end of each phase)
 
