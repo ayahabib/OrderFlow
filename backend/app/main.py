@@ -8,6 +8,7 @@ from fastapi.responses import PlainTextResponse
 
 from app.api import me, offers, products, stores, zones
 from app.config import get_settings
+from app.webhooks import web_chat
 from app.db.pool import create_pool
 
 
@@ -28,7 +29,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
         CORSMiddleware,
         allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
         allow_methods=["*"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Session-Token"],
     )
 
     @app.get("/health", response_class=PlainTextResponse)
@@ -42,6 +43,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.include_router(products.variants_router)
     app.include_router(offers.router)
     app.include_router(zones.router)
+    app.include_router(web_chat.router)
     return app
 
 

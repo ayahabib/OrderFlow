@@ -7,6 +7,7 @@ import OffersPage from './pages/OffersPage'
 import ProductsPage from './pages/ProductsPage'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/SettingsPage'
+import SimulatorPage from './pages/SimulatorPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
 
 function Loading() {
@@ -35,6 +36,7 @@ function Dashboard() {
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/offers" element={<OffersPage />} />
         <Route path="/import" element={<ImportPage />} />
+        <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/products" replace />} />
       </Route>

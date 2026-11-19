@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # Channels (used from tasks 1.5 / 1.13)
     channel_encryption_key: SecretStr | None = None
     telegram_webhook_secret: SecretStr | None = None
+    web_chat_secret: SecretStr | None = None  # signs web chat simulator session tokens
     public_base_url: str = "http://localhost:8000"
 
     # Frontend origins allowed by CORS (comma-separated)

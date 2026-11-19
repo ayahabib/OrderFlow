@@ -22,6 +22,15 @@ async def create_pool(settings: Settings) -> asyncpg.Pool:
     )
 
 
+def get_db_factory(request: Request):
+    """For background tasks: a callable returning `async with`-able connections.
+
+    Background tasks run after the response, when the request's own connection
+    (get_db) has already gone back to the pool, so they borrow a fresh one.
+    """
+    return request.app.state.db_pool.acquire
+
+
 async def get_db(request: Request) -> AsyncIterator[asyncpg.Connection]:
     """Borrow a pooled connection for the duration of one request."""
     pool: asyncpg.Pool = request.app.state.db_pool

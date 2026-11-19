@@ -15,6 +15,7 @@ export default function Layout() {
           <NavLink to="/products">المنتجات</NavLink>
           <NavLink to="/offers">العروض</NavLink>
           <NavLink to="/import">رفع المخزون</NavLink>
+          <NavLink to="/simulator">محاكي الشات</NavLink>
           <NavLink to="/settings">الإعدادات</NavLink>
         </nav>
         <span className="spacer" />
