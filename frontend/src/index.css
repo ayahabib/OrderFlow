@@ -173,3 +173,15 @@ tbody tr:last-child td { border-bottom: none; }
 .topbar nav a { color: var(--muted); text-decoration: none; }
 .topbar nav a.active { color: var(--accent); font-weight: 600; }
 .topbar .spacer { flex: 1; }
+
+select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.badge.muted-badge { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+.offer-price { margin-top: 4px; color: var(--info); }

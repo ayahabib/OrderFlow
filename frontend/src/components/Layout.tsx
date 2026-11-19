@@ -13,6 +13,7 @@ export default function Layout() {
         <strong>{store?.name}</strong>
         <nav>
           <NavLink to="/products">المنتجات</NavLink>
+          <NavLink to="/offers">العروض</NavLink>
           <NavLink to="/import">رفع المخزون</NavLink>
           <NavLink to="/settings">الإعدادات</NavLink>
         </nav>

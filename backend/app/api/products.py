@@ -4,6 +4,7 @@ The client uploads the same file to both endpoints; nothing is stored between
 preview and confirm. store_id comes from the token only.
 """
 
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 from uuid import UUID
@@ -15,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from app.api.auth import get_current_store_id
 from app.db import products as products_db
 from app.db.pool import get_db
-from app.services import excel_import, inventory
+from app.services import excel_import, inventory, pricing
 from app.utils.arabic import normalize_arabic, to_latin_digits
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -28,6 +29,21 @@ Stock = Annotated[int, Field(ge=0, le=1_000_000)]
 
 # --- products table ----------------------------------------------------------
 
+def _annotate(variant: dict, product_id: UUID, offers: list[pricing.Offer], now: datetime) -> dict:
+    price = pricing.variant_price(variant["effective_price"], product_id, variant["id"], offers, now)
+    variant["offer_price"] = price.unit_price if price.offer else None
+    variant["offer_name"] = price.offer.name if price.offer else None
+    return variant
+
+
+async def _with_offers(conn, store_id: UUID, products: list[dict]) -> list[dict]:
+    offers, now = await pricing.load_offers(conn, store_id), datetime.now(timezone.utc)
+    for p in products:
+        for v in p["variants"]:
+            _annotate(v, p["id"], offers, now)
+    return products
+
+
 class VariantOut(BaseModel):
     id: UUID
     name: str
@@ -38,6 +54,9 @@ class VariantOut(BaseModel):
     stock_quantity: int
     low_stock_threshold: int
     is_active: bool
+    # Price after the best live offer (services/pricing.py); None when no offer applies.
+    offer_price: Decimal | None = None
+    offer_name: str | None = None
 
 
 class ProductOut(BaseModel):
@@ -95,7 +114,8 @@ class ProductCreate(BaseModel):
 
 
 async def _product_out(conn, store_id: UUID, product_id: UUID) -> dict:
-    return next(p for p in await products_db.list_products(conn, store_id) if p["id"] == product_id)
+    products = await _with_offers(conn, store_id, await products_db.list_products(conn, store_id))
+    return next(p for p in products if p["id"] == product_id)
 
 
 @router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
@@ -138,7 +158,7 @@ async def list_products(
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> list[dict]:
-    return await products_db.list_products(conn, store_id)
+    return await _with_offers(conn, store_id, await products_db.list_products(conn, store_id))
 
 
 @router.patch("/{product_id}", response_model=ProductOut)
@@ -174,7 +194,9 @@ async def update_variant(
         kwargs["price_override"] = fields["price_override"]
     if not await inventory.update_variant(conn, store_id, variant_id, **kwargs):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="النسخة غير موجودة")
-    return await products_db.get_variant(conn, store_id, variant_id)
+    variant = await products_db.get_variant(conn, store_id, variant_id)
+    offers = await pricing.load_offers(conn, store_id)
+    return _annotate(variant, variant["product_id"], offers, datetime.now(timezone.utc))
 
 
 # --- import ------------------------------------------------------------------

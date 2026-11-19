@@ -174,6 +174,11 @@ export default function ProductsPage() {
                             validate={(t) => validatePrice(t, true)}
                             onSave={async (t) => replaceVariant(p.id, await updateVariant(v.id, { price_override: t === '' ? null : t }))}
                           />
+                          {v.offer_price && (
+                            <div className="offer-price small" title={v.offer_name ?? undefined}>
+                              عرض: <strong>{v.offer_price}</strong> <s className="muted">{v.effective_price}</s> · {v.offer_name}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

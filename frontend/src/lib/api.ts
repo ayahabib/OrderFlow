@@ -82,6 +82,8 @@ export type Variant = {
   stock_quantity: number
   low_stock_threshold: number
   is_active: boolean
+  offer_price: string | null // price after the best live offer, computed by the backend
+  offer_name: string | null
 }
 
 export type Product = {
@@ -158,3 +160,46 @@ export const previewImport = (file: File) =>
   api<ImportPreview>('/api/products/import/preview', { method: 'POST', body: fileForm(file) })
 export const confirmImport = (file: File) =>
   api<ImportResult>('/api/products/import/confirm', { method: 'POST', body: fileForm(file) })
+
+// --- offers ---
+
+export type OfferKind = 'percent_off' | 'fixed_price' | 'free_delivery'
+export type OfferStatus = 'live' | 'scheduled' | 'ended' | 'paused'
+
+export type Offer = {
+  id: string
+  name: string
+  kind: OfferKind
+  product_id: string | null
+  variant_id: string | null
+  product_name: string | null
+  variant_name: string | null
+  percent: string | null
+  fixed_price: string | null
+  min_order_total: string | null
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean
+  status: OfferStatus
+}
+
+export type OfferInput = {
+  name: string
+  kind: OfferKind
+  product_id?: string | null
+  variant_id?: string | null
+  percent?: string | null
+  fixed_price?: string | null
+  min_order_total?: string | null
+  starts_at?: string | null
+  ends_at?: string | null
+}
+
+export type OfferChanges = Partial<Pick<Offer, 'name' | 'percent' | 'fixed_price' | 'min_order_total' | 'starts_at' | 'ends_at' | 'is_active'>>
+
+export const listOffers = () => api<Offer[]>('/api/offers')
+export const createOffer = (input: OfferInput) =>
+  api<Offer>('/api/offers', { method: 'POST', body: JSON.stringify(input) })
+export const updateOffer = (id: string, changes: OfferChanges) =>
+  api<Offer>(`/api/offers/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
+export const deleteOffer = (id: string) => api<null>(`/api/offers/${id}`, { method: 'DELETE' })
