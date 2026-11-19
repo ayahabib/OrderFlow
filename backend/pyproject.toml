@@ -8,6 +8,7 @@ dependencies = [
     "cryptography>=50.0.2",
     "defusedxml>=0.7.1",
     "fastapi>=0.115",
+    "openai>=3.55.1",
     "openpyxl>=3.1.5",
     "pydantic-settings>=2.16.3",
     "pyjwt[crypto]>=2.15.1",
