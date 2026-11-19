@@ -49,14 +49,21 @@ digits ("٤٢"->"42"), volume like "50ml". null if none.
 dual nouns ("فستانين")=2, "زوج كوتشي" (a pair of shoes)=1.
 - notes: free notes that don't change stock (gift wrap, "بدون علبة"). null if none.
 
+If the store's previous message is shown, use it only to understand short answers \
+(e.g. the store asked for the size and the customer wrote "L"): extract from the customer message only.
+
 address_text: delivery address exactly as written, or null. phone: digits only, Latin digits, or null.
 wants_to_confirm: true only if the message confirms the order.
 """
 
 
-def build_user_message(text: str) -> str:
+def build_user_message(text: str, context: str | None = None) -> str:
     # Delimit the customer text so it can't blend into instructions.
-    return f"Customer message:\n<<<\n{text}\n>>>"
+    message = f"Customer message:\n<<<\n{text}\n>>>"
+    if context:
+        # What the store asked last (our own text), so short answers like "L" make sense.
+        message = f"The store's previous message to this customer:\n<<<\n{context}\n>>>\n\n" + message
+    return message
 
 
 _SIZE_WORDS = {
@@ -88,6 +95,9 @@ def _clean_size(size: str | None) -> str | None:
     return size
 
 
+clean_size = _clean_size  # public: the order flow parses short size answers with it
+
+
 def _clean_phone(phone: str | None) -> str | None:
     phone = _blank_to_none(phone)
     if phone is None:
@@ -116,9 +126,12 @@ def clean(analysis: MessageAnalysis) -> MessageAnalysis:
     })
 
 
-async def analyze_message(llm: LLM, text: str) -> MessageAnalysis:
-    """Intent + sensitive reason + order details. Raises LLMError on failure (caller escalates)."""
+async def analyze_message(llm: LLM, text: str, context: str | None = None) -> MessageAnalysis:
+    """Intent + sensitive reason + order details. Raises LLMError on failure (caller escalates).
+
+    `context` is the bot's last question, if any. Only the customer message is extracted.
+    """
     result = await llm.structured(
-        system=SYSTEM_PROMPT, user=build_user_message(text), schema=MessageAnalysis, task="analyze_message"
+        system=SYSTEM_PROMPT, user=build_user_message(text, context), schema=MessageAnalysis, task="analyze_message"
     )
     return clean(result)

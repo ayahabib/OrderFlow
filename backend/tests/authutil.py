@@ -14,6 +14,8 @@ from app.api import auth
 from app.api.auth import get_current_store_id
 from app.config import Settings, get_settings
 from app.db.pool import get_db, get_db_factory
+from app.llm.client import get_llm
+from app.llm.schemas import MessageAnalysis
 from app.main import create_app
 
 TEST_URL = "https://test-project.supabase.co"
@@ -47,9 +49,35 @@ def patch_jwks(monkeypatch) -> None:
     monkeypatch.setattr(auth, "_jwks_client", lambda url: client)
 
 
-def build_app(conn, settings: Settings | None = None):
+class ScriptedLLM:
+    """Fake LLM: returns a scripted MessageAnalysis per exact customer text; records every call.
+
+    Unscripted texts come back as intent "other" with nothing extracted. Never calls OpenAI.
+    """
+
+    def __init__(self, script: dict | None = None):
+        self.script = script or {}
+        self.calls: list[dict] = []
+
+    async def structured(self, *, system, user, schema, task):
+        self.calls.append({"user": user, "task": task})
+        text = user.rsplit("Customer message:\n<<<\n", 1)[1].rsplit("\n>>>", 1)[0]
+        result = self.script.get(text)
+        if isinstance(result, Exception):
+            raise result
+        return result or analysis(intent="other")
+
+
+def analysis(**kw) -> MessageAnalysis:
+    base = dict(intent="order", sensitive_reason=None, items=[], address_text=None, phone=None, wants_to_confirm=False)
+    return MessageAnalysis(**{**base, **kw})
+
+
+def build_app(conn, settings: Settings | None = None, llm=None):
     app = create_app(use_lifespan=False)
     app.dependency_overrides[get_settings] = lambda: settings or test_settings()
+    fake_llm = llm if llm is not None else ScriptedLLM()
+    app.dependency_overrides[get_llm] = lambda: fake_llm
 
     async def override_db():
         yield conn
@@ -71,8 +99,8 @@ def build_app(conn, settings: Settings | None = None):
     return app
 
 
-def client_for(conn, settings: Settings | None = None) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn, settings)), base_url="http://test")
+def client_for(conn, settings: Settings | None = None, llm=None) -> httpx.AsyncClient:
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn, settings, llm)), base_url="http://test")
 
 
 async def insert_auth_user(conn, user_id: uuid.UUID | None = None) -> uuid.UUID:

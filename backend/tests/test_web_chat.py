@@ -40,7 +40,7 @@ async def test_message_is_saved_and_bot_echoes(db_tx):
 
     assert [m["sender"] for m in messages] == ["customer", "bot"]
     assert messages[0]["content"] == "بدي فستان احمر"
-    assert "بدي فستان احمر" in messages[1]["content"]
+    assert messages[1]["content"]  # the order flow answered (fake LLM: a greeting -> welcome)
 
     customer = await db_tx.fetchrow(
         "select id, name, channel::text as channel from customers where store_id = $1 and external_id = $2", store, session

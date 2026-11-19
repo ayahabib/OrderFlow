@@ -120,3 +120,23 @@ class OpenAILLM:
         tokens = f" in={usage.prompt_tokens} out={usage.completion_tokens}" if usage else ""
         log.info("llm task=%s model=%s attempt=%d ms=%d outcome=%s%s",
                  task, self.model, attempt, (time.perf_counter() - started) * 1000, outcome, tokens)
+
+
+_cached: dict[tuple, OpenAILLM] = {}
+
+
+def get_llm() -> LLM | None:
+    """FastAPI dependency. None when OpenAI isn't configured: the engine then escalates (hard rule 6).
+
+    One client per (model, key), reused across requests.
+    """
+    from app.config import get_settings
+
+    settings = get_settings()
+    key = (settings.openai_model, settings.openai_api_key.get_secret_value() if settings.openai_api_key else None)
+    if key not in _cached:
+        try:
+            _cached[key] = OpenAILLM(settings)
+        except LLMError:
+            return None
+    return _cached[key]

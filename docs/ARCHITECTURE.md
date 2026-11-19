@@ -142,7 +142,7 @@ class ChannelAdapter(Protocol):
 3. فحص قواعد التحويل الإجبارية (rules.py)، بطريقتين وأي وحدة بتكفي:
       أ) كلمات مفتاحية بعد توحيد النص العربي (بدون LLM، بتشتغل حتى لو الـ LLM فشل)
       ب) حقل sensitive_reason من مكالمة تصنيف النية (الخطوة 5)
-      + قواعد بالكود: منطقة غير مسجلة، طلبية كبيرة (حدود stores.large_order_*)
+      + قواعد بالكود: طلبية كبيرة (حدود stores.large_order_*)، ما في مناطق توصيل مسجلة
       شكوى / طلب خصم / حساسية / "بدي أحكي مع شخص" ...
       ← إذا تطابقت: إنشاء escalation + إشعار صاحب المتجر + رد للعميل "بحوّلك لموظف"، وتوقف
 4. اقرأ conversation.bot_state (وين وصلنا بالطلب؟)
@@ -151,8 +151,9 @@ class ChannelAdapter(Protocol):
       + sensitive_reason (null أو سبب تحويل) ← لو مش null: escalation وتوقف
 6. حسب النية:
       order / edit_order / confirm / cancel  →  order_flow.py
-      question                                →  qa.py (RAG)
-      other / مش متأكد                        →  escalation
+      question                                →  qa.py (RAG). لحد المرحلة 2: escalation (not_in_data)
+      other بدون طلب مفتوح (تحية مثلاً)        →  رد ترحيب ثابت (بدون معلومات مخترعة)
+      other بنص طلب                           →  إعادة السؤال المفتوح
 7. ابعت الرد عبر الـ adapter، واحفظه بجدول messages
 ```
 
@@ -165,18 +166,22 @@ class ChannelAdapter(Protocol):
 ```json
 {
   "mode": "idle | collecting | awaiting_confirmation",
-  "draft": {
-    "items": [
-      {"variant_id": "uuid", "product_name": "فستان صيفي", "variant_name": "أحمر / M", "quantity": 2, "unit_price": 120.0, "notes": null}
-    ],
-    "address": "نابلس، شارع ...",
-    "phone": "059...",
-    "delivery_zone_id": "uuid",
-    "delivery_fee": 10.0
-  },
-  "pending_questions": ["variant_for:فستان صيفي"]
+  "items": [
+    {"variant_id": "uuid", "product_id": "uuid", "product_name": "فستان صيفي", "variant_name": "أحمر / M", "quantity": 2, "notes": null}
+  ],
+  "queue": [{"product_text": "شنطة", "color": null, "size": null, "quantity": 1}],
+  "pending": {"kind": "variant | product | stock | address | zone | phone", "question": "أي المقاس ...؟", "...": "..."},
+  "address": "نابلس، شارع ...",
+  "zone_id": "uuid", "zone_name": "نابلس",
+  "phone": "059..."
 }
 ```
+
+ملاحظات (من تنفيذ 1.8):
+- **ما في أسعار بالحالة**: الأسعار والمجموع وأجرة التوصيل بتنحسب من جديد بكل ملخص (`services/order_totals.py` + `pricing.py`)، وبتتخزن كـ snapshot بس عند التأكيد (1.9).
+- **سؤال مفتوح واحد بكل مرة** (`pending`). الأجوبة القصيرة (مقاس/لون من الخيارات المعروضة، رقم تلفون، اسم منطقة، نعم/لا) بتنفهم بالكود بدون LLM. غير هيك بنعطي الـ LLM سؤال البوت الأخير كـ context (بيانات مش تعليمات).
+- **قفل المحادثة** (`select ... for update`) خلال معالجة الرسالة، فرسالتين ورا بعض ما بيخربوا الحالة.
+- **تحويل مبدئي** (`services/escalation.py`): سطر `escalations` + `status = 'waiting_owner'` لفشل الـ LLM، `sensitive_reason`، الأسئلة العامة، ما في مناطق توصيل مسجلة بالمرة، وطلبية كبيرة. منطقة برّا النطاق ما بتتحوّل: البوت بيعتذر، بيذكر المناطق، وبيسكّر الطلب (قرار صاحب المتجر). الكلمات المفتاحية وإشعار Telegram بـ 1.11.
 
 ### خطوات الاستخراج والمطابقة
 
@@ -195,7 +200,7 @@ class ChannelAdapter(Protocol):
    - مطابقة الـ variant من `options` (لون/مقاس).
    - منتج بأكتر من variant والعميل ما حدد ← بنسأل ("أي لون ومقاس؟"). ما بنخمّن.
    - منتج مش موجود ← بنقول للعميل، وبنقترح الأقرب.
-3. **الحسابات (كود):** `unit_price = coalesce(variant.price_override, product.price)`، المجموع، أجرة التوصيل من `delivery_zones`. منطقة غير موجودة ← escalation (ما بنعطي أجرة من راسنا).
+3. **الحسابات (كود):** `unit_price = coalesce(variant.price_override, product.price)`، المجموع، أجرة التوصيل من `delivery_zones`. منطقة برّا النطاق ← اعتذار وإغلاق الطلب (ما بنعطي أجرة من راسنا).
 4. **اكتمال الطلب:** لو ناقص عنوان أو رقم ← بنسأل. لما يكتمل ← `awaiting_confirmation` وبنعرض ملخص بأزرار (تأكيد / تعديل / إلغاء).
 5. **التأكيد:** الأفضل **أزرار** (Telegram inline / WhatsApp reply buttons) بدل ما نفسّر "تمام" بالـ LLM. لو العميل كتب نص، بنصنّفه (yes/no/edit).
 6. **التنفيذ (transaction واحدة):**

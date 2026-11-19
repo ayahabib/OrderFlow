@@ -4,19 +4,21 @@ Two steps, so webhooks can answer fast (hard rule 11):
 1. `ingest` (inside the webhook request): find/create the customer and conversation,
    store the message once (duplicates are ignored). Cheap, and the message is safe
    in the DB before we return 200.
-2. `respond` (background task): decide the reply and send it. Later tasks plug in
-   forced-escalation rules (1.11), intent + order flow (1.6-1.9) and Q&A (2.2).
-   For task 1.5 the reply is a fixed acknowledgement (echo).
+2. `respond` (background task): run the order flow (engine/order_flow.py) and send
+   the reply. Task 1.11 adds keyword escalation rules in front of it, 2.2 adds Q&A.
 """
 
+import json
 import logging
 from dataclasses import dataclass
 from uuid import UUID
 
 import asyncpg
 
-from app.channels.base import ChannelAdapter, InboundMessage, OutboundMessage
+from app.channels.base import ChannelAdapter, InboundMessage
 from app.db import conversations as db
+from app.engine import order_flow
+from app.llm.client import LLM
 
 log = logging.getLogger(__name__)
 
@@ -48,29 +50,49 @@ async def ingest(conn: asyncpg.Connection, msg: InboundMessage) -> Ingested:
     return Ingested(conversation["id"], message_id, bot_should_reply=message_id is not None and bot_on)
 
 
-def decide_reply(text: str) -> OutboundMessage:
-    """Placeholder until the LLM layer (1.6+): a fixed acknowledgement, never invented content."""
-    return OutboundMessage(text=f"وصلتني رسالتك: «{text}». البوت قيد التجهيز، رح نرد عليك قريباً.")
-
-
 async def respond(
-    conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID, to: str, text: str, adapter: ChannelAdapter
+    conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID, to: str, text: str,
+    adapter: ChannelAdapter, llm: LLM | None,
 ) -> None:
-    """Background step: build the reply, store it, deliver it."""
-    # Re-check: the owner may have paused the bot between ingest and now.
-    paused = await conn.fetchval(
-        "select bot_paused or status in ('owner', 'waiting_owner') from conversations where id = $1 and store_id = $2",
-        conversation_id, store_id,
-    )
-    if paused is None or paused:
-        return
+    """Background step: run the order flow, store the reply and the new state, deliver it."""
+    async with conn.transaction():
+        # Lock the conversation: messages of one customer are handled one at a time,
+        # so each step sees the state the previous one saved.
+        row = await conn.fetchrow(
+            """
+            select c.bot_paused or c.status in ('owner', 'waiting_owner') as paused, c.bot_state,
+                   cu.phone, s.currency, s.large_order_item_qty, s.large_order_total_qty, s.large_order_amount
+              from conversations c
+              join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
+              join stores s on s.id = c.store_id
+             where c.id = $1 and c.store_id = $2
+               for update of c
+            """,
+            conversation_id, store_id,
+        )
+        # Re-check: the owner may have paused the bot between ingest and now.
+        if row is None or row["paused"]:
+            return
 
-    reply = decide_reply(text)
-    await db.insert_message(
-        conn, store_id, conversation_id, "bot", reply.text,
-        {"buttons": [b.model_dump() for b in reply.buttons]} if reply.buttons else {},
-    )
-    await db.touch_conversation(conn, store_id, conversation_id)
+        raw_state = json.loads(row["bot_state"]) if isinstance(row["bot_state"], str) else row["bot_state"]
+        ctx = order_flow.Context(
+            conn=conn, store_id=store_id, conversation_id=conversation_id, llm=llm, currency=row["currency"],
+            large_item_qty=row["large_order_item_qty"], large_total_qty=row["large_order_total_qty"],
+            large_amount=row["large_order_amount"], customer_phone=row["phone"],
+        )
+        outcome = await order_flow.handle(ctx, order_flow.BotState.load(raw_state), text)
+        reply = outcome.reply
+
+        await conn.execute(
+            "update conversations set bot_state = $3::jsonb where id = $1 and store_id = $2",
+            conversation_id, store_id, outcome.state.model_dump_json(),
+        )
+        await db.insert_message(
+            conn, store_id, conversation_id, "bot", reply.text,
+            {"buttons": [b.model_dump() for b in reply.buttons]} if reply.buttons else {},
+        )
+        await db.touch_conversation(conn, store_id, conversation_id)
+
     try:
         await adapter.send(to, reply)
     except Exception:

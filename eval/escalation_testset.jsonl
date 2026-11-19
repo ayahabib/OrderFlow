@@ -9,8 +9,8 @@
 {"id":"esc-009","split":"dev","message":"العطر فيه كحول؟ عندي حساسية","should_escalate":true,"reason":"allergy_ingredients","tags":["allergy"]}
 {"id":"esc-010","split":"test","message":"شو مكونات العطر؟","should_escalate":true,"reason":"allergy_ingredients","tags":["ingredients"]}
 {"id":"esc-011","split":"dev","message":"الوشاح بيسبب حساسية؟","should_escalate":true,"reason":"allergy_ingredients","tags":["allergy"]}
-{"id":"esc-012","split":"test","message":"بدي التوصيل ع الخليل","should_escalate":true,"reason":"unknown_zone","tags":["unknown_zone"]}
-{"id":"esc-013","split":"dev","message":"بتوصلوا ع بيت لحم؟","should_escalate":true,"reason":"unknown_zone","tags":["unknown_zone"]}
+{"id":"esc-012","split":"test","message":"بدي التوصيل ع الخليل","should_escalate":false,"reason":"unknown_zone","tags":["unknown_zone"]}
+{"id":"esc-013","split":"dev","message":"بتوصلوا ع بيت لحم؟","should_escalate":false,"reason":"unknown_zone","tags":["unknown_zone"]}
 {"id":"esc-014","split":"test","message":"بدي احكي مع حدا","should_escalate":true,"reason":"human_requested","tags":["human"]}
 {"id":"esc-015","split":"dev","message":"حولني لموظف","should_escalate":true,"reason":"human_requested","tags":["human"]}
 {"id":"esc-016","split":"test","message":"فيني احكي مع صاحب المحل؟","should_escalate":true,"reason":"human_requested","tags":["human"]}
