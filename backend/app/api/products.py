@@ -5,18 +5,179 @@ preview and confirm. store_id comes from the token only.
 """
 
 from decimal import Decimal
+from typing import Annotated
 from uuid import UUID
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.api.auth import get_current_store_id
+from app.db import products as products_db
 from app.db.pool import get_db
 from app.services import excel_import, inventory
-from app.utils.arabic import normalize_arabic
+from app.utils.arabic import normalize_arabic, to_latin_digits
 
 router = APIRouter(prefix="/api/products", tags=["products"])
+variants_router = APIRouter(prefix="/api/variants", tags=["products"])
+
+# Money: numeric(10,2) in the DB -> Decimal with 2 places, never float.
+Money = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=2)]
+Stock = Annotated[int, Field(ge=0, le=1_000_000)]
+
+
+# --- products table ----------------------------------------------------------
+
+class VariantOut(BaseModel):
+    id: UUID
+    name: str
+    options: dict
+    sku: str | None
+    price_override: Decimal | None
+    effective_price: Decimal  # coalesce(price_override, product.price), computed in SQL
+    stock_quantity: int
+    low_stock_threshold: int
+    is_active: bool
+
+
+class ProductOut(BaseModel):
+    id: UUID
+    name: str
+    category: str | None
+    price: Decimal
+    is_active: bool
+    variants: list[VariantOut]
+
+
+class ProductUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    price: Money
+
+
+class VariantUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    stock_quantity: Stock | None = None
+    price_override: Money | None = None  # explicit null clears the override
+
+
+OptionText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)]
+
+
+class VariantIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    color: OptionText | None = None
+    size: OptionText | None = None
+    quantity: Stock
+    price_override: Money | None = None
+    sku: OptionText | None = None
+
+    def to_new(self) -> inventory.NewVariant:
+        options = {k: to_latin_digits(v) for k, v in (("color", self.color), ("size", self.size)) if v}
+        return inventory.NewVariant(
+            options=options, quantity=self.quantity, price_override=self.price_override, sku=self.sku or None,
+        )
+
+
+class ProductCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # no store_id from the body
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+    price: Money
+    category: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None = None
+    description: Annotated[str, StringConstraints(strip_whitespace=True, max_length=2000)] | None = None
+    variants: Annotated[list[VariantIn], Field(min_length=1, max_length=100)]
+
+    @model_validator(mode="after")
+    def unique_variants(self):
+        names = [normalize_arabic(excel_import.variant_name(v.to_new().options)) for v in self.variants]
+        if len(names) != len(set(names)):
+            raise ValueError("في نسختين بنفس اللون والمقاس")
+        return self
+
+
+async def _product_out(conn, store_id: UUID, product_id: UUID) -> dict:
+    return next(p for p in await products_db.list_products(conn, store_id) if p["id"] == product_id)
+
+
+@router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    body: ProductCreate,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> dict:
+    """Add a product by hand. Opening stock records a 'manual' movement per variant."""
+    try:
+        product_id = await inventory.create_product(
+            conn, store_id, name=" ".join(body.name.split()), price=body.price,
+            category=body.category or None, description=body.description or None,
+            variants=[v.to_new() for v in body.variants],
+        )
+    except inventory.DuplicateError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    return await _product_out(conn, store_id, product_id)
+
+
+@router.post("/{product_id}/variants", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
+async def add_variant(
+    product_id: UUID,
+    body: VariantIn,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> dict:
+    """Add a new color/size to an existing product."""
+    try:
+        variant_id = await inventory.add_variant(conn, store_id, product_id, body.to_new())
+    except inventory.DuplicateError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    if variant_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="المنتج غير موجود")
+    return await _product_out(conn, store_id, product_id)
+
+
+@router.get("", response_model=list[ProductOut])
+async def list_products(
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> list[dict]:
+    return await products_db.list_products(conn, store_id)
+
+
+@router.patch("/{product_id}", response_model=ProductOut)
+async def update_product(
+    product_id: UUID,
+    body: ProductUpdate,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> dict:
+    if not await inventory.update_product_price(conn, store_id, product_id, body.price):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="المنتج غير موجود")
+    return await _product_out(conn, store_id, product_id)
+
+
+@variants_router.patch("/{variant_id}", response_model=VariantOut)
+async def update_variant(
+    variant_id: UUID,
+    body: VariantUpdate,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> dict:
+    """Edit quantity and/or price override. A quantity change records a 'manual' movement."""
+    fields = body.model_dump(exclude_unset=True)
+    if not fields:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="ما في تعديل")
+    if "stock_quantity" in fields and fields["stock_quantity"] is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="الكمية لازم تكون رقم")
+
+    kwargs = {}
+    if "stock_quantity" in fields:
+        kwargs["stock_quantity"] = fields["stock_quantity"]
+    if "price_override" in fields:
+        kwargs["price_override"] = fields["price_override"]
+    if not await inventory.update_variant(conn, store_id, variant_id, **kwargs):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="النسخة غير موجودة")
+    return await products_db.get_variant(conn, store_id, variant_id)
+
+
+# --- import ------------------------------------------------------------------
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # 2 MB is plenty for a few thousand rows
 
@@ -117,3 +278,29 @@ async def confirm_import(
     except inventory.ImportConflictError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
     return ImportConfirmResult(**result.__dict__, skipped_rows=_errors(plan))
+
+
+# --- delete ------------------------------------------------------------------
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(
+    product_id: UUID,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> None:
+    if not await inventory.delete_product(conn, store_id, product_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="المنتج غير موجود")
+
+
+@variants_router.delete("/{variant_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_variant(
+    variant_id: UUID,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> None:
+    try:
+        found = await inventory.delete_variant(conn, store_id, variant_id)
+    except inventory.LastVariantError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc))
+    if not found:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="النسخة غير موجودة")

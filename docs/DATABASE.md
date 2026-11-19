@@ -242,6 +242,48 @@ create table order_items (
 create index order_items_order_idx on order_items (order_id);
 ```
 
+> مع العروض (3.7): `order_items.unit_price` = السعر بعد العرض، ومنضيف `list_price numeric(10,2)` (السعر قبل العرض) و `offer_id uuid references offers(id) on delete set null` كـ snapshot. و`orders` بيضل فيه `delivery_fee` (صفر لو انطبق توصيل مجاني) + `free_delivery_offer_id`.
+
+### 3.7 العروض
+
+```sql
+create type offer_kind as enum ('percent_off', 'fixed_price', 'free_delivery');
+
+create table offers (
+  id               uuid primary key default gen_random_uuid(),
+  store_id         uuid not null references stores(id) on delete cascade,
+  name             text not null,                       -- "خصم الصيف"
+  kind             offer_kind not null,
+  product_id       uuid references products(id) on delete cascade,          -- عرض على منتج كامل
+  variant_id       uuid references product_variants(id) on delete cascade,  -- أو على نسخة وحدة
+  percent          numeric(5,2) check (percent > 0 and percent < 100),      -- percent_off
+  fixed_price      numeric(10,2) check (fixed_price >= 0),                  -- fixed_price
+  min_order_total  numeric(10,2) check (min_order_total >= 0),              -- free_delivery
+  starts_at        timestamptz,                         -- null = من هلأ
+  ends_at          timestamptz,                         -- null = بدون نهاية
+  is_active        boolean not null default true,
+  created_at       timestamptz not null default now(),
+  check (ends_at is null or starts_at is null or ends_at > starts_at),
+  check (
+    (kind = 'percent_off'   and percent is not null and fixed_price is null and min_order_total is null
+                            and num_nonnulls(product_id, variant_id) = 1) or
+    (kind = 'fixed_price'   and fixed_price is not null and percent is null and min_order_total is null
+                            and num_nonnulls(product_id, variant_id) = 1) or
+    (kind = 'free_delivery' and min_order_total is not null and percent is null and fixed_price is null
+                            and product_id is null and variant_id is null)
+  )
+);
+
+create index offers_store_idx on offers (store_id, is_active);
+```
+
+قواعد الحساب (بالكود، `services/pricing.py`):
+- السعر الأساسي للنسخة = `coalesce(price_override, products.price)`.
+- العروض الفعّالة = `is_active` و `now()` بين `starts_at` و `ends_at`، وعلى نفس النسخة أو منتجها.
+- `percent_off`: `round(base × (1 − percent/100), 2)` (تقريب نص لفوق). `fixed_price`: `min(fixed_price, base)`.
+- بنختار العرض الي بيعطي **أقل سعر**، عرض واحد بس.
+- `free_delivery`: لو مجموع الطلب بعد الخصومات ≥ `min_order_total` ← أجرة التوصيل = 0.
+
 ### 3.6 التحويل والـ Knowledge Base
 
 ```sql
@@ -384,7 +426,7 @@ begin
   foreach t in array array[
     'store_channels','products','product_variants','inventory_movements',
     'delivery_zones','customers','conversations','messages','orders',
-    'order_items','escalations','knowledge_base'
+    'order_items','escalations','knowledge_base','offers'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

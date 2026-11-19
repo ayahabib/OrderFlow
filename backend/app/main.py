@@ -39,6 +39,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.include_router(me.router)
     app.include_router(stores.router)
     app.include_router(products.router)
+    app.include_router(products.variants_router)
     return app
 
 

@@ -6,7 +6,7 @@ from uuid import UUID
 
 import asyncpg
 
-from app.services.excel_import import ImportPlan
+from app.services.excel_import import ImportPlan, variant_name
 from app.utils.arabic import normalize_arabic
 
 
@@ -153,3 +153,185 @@ async def apply_import(conn: asyncpg.Connection, store_id: UUID, plan: ImportPla
             raise ImportConflictError("في SKU بالملف مستخدم لمنتج تاني بالمتجر. ما انحفظ ولا اشي.") from exc
         raise ImportConflictError("في تعارض مع بيانات موجودة. ما انحفظ ولا اشي.") from exc
     return result
+
+
+# --- manual edits from the products page ----------------------------------
+
+_UNSET = object()
+
+
+async def update_variant(
+    conn: asyncpg.Connection,
+    store_id: UUID,
+    variant_id: UUID,
+    *,
+    stock_quantity: int | None = None,
+    price_override=_UNSET,
+) -> bool:
+    """Set a variant's stock and/or price override. Returns False if it isn't in this store.
+
+    A stock change writes a 'manual' movement with change = new - old. The row is
+    locked (FOR UPDATE) so a concurrent order can't change stock between the read
+    and the write.
+    """
+    async with conn.transaction():
+        old_stock = await conn.fetchval(
+            "select stock_quantity from product_variants where id = $1 and store_id = $2 for update",
+            variant_id, store_id,
+        )
+        if old_stock is None:
+            return False
+
+        if stock_quantity is not None and stock_quantity != old_stock:
+            await conn.execute(
+                "update product_variants set stock_quantity = $3, updated_at = now() where id = $1 and store_id = $2",
+                variant_id, store_id, stock_quantity,
+            )
+            await conn.execute(
+                """
+                insert into inventory_movements (store_id, variant_id, change, reason)
+                values ($1, $2, $3, 'manual')
+                """,
+                store_id, variant_id, stock_quantity - old_stock,
+            )
+
+        if price_override is not _UNSET:
+            # None clears the override, so the product's base price applies again.
+            await conn.execute(
+                "update product_variants set price_override = $3, updated_at = now() where id = $1 and store_id = $2",
+                variant_id, store_id, price_override,
+            )
+    return True
+
+
+async def update_product_price(conn: asyncpg.Connection, store_id: UUID, product_id: UUID, price) -> bool:
+    status = await conn.execute(
+        "update products set price = $3, updated_at = now() where id = $1 and store_id = $2",
+        product_id, store_id, price,
+    )
+    return status != "UPDATE 0"
+
+
+# --- adding items manually from the products page --------------------------
+
+@dataclass
+class NewVariant:
+    options: dict  # {"color": ..., "size": ...}, only filled keys
+    quantity: int
+    price_override: object = None  # Decimal | None
+    sku: str | None = None
+
+
+class DuplicateError(Exception):
+    """Product/variant/SKU already exists. Nothing was saved."""
+
+
+async def _insert_variant(conn, store_id: UUID, product_id: UUID, v: NewVariant) -> UUID:
+    variant_id = await conn.fetchval(
+        """
+        insert into product_variants (store_id, product_id, name, options, sku, price_override, stock_quantity)
+        values ($1, $2, $3, $4::jsonb, $5, $6, $7)
+        returning id
+        """,
+        store_id, product_id, variant_name(v.options), json.dumps(v.options, ensure_ascii=False),
+        v.sku, v.price_override, v.quantity,
+    )
+    if v.quantity:
+        # Opening stock is a manual stock change like any other.
+        await conn.execute(
+            "insert into inventory_movements (store_id, variant_id, change, reason) values ($1, $2, $3, 'manual')",
+            store_id, variant_id, v.quantity,
+        )
+    return variant_id
+
+
+def _duplicate_message(exc: asyncpg.UniqueViolationError) -> str:
+    constraint = exc.constraint_name or ""
+    if "sku" in constraint:
+        return "الـ SKU مستخدم لمنتج تاني"
+    if constraint.startswith("product_variants"):
+        return "هالنسخة (نفس اللون والمقاس) موجودة من قبل"
+    return "في منتج بنفس الاسم"
+
+
+async def create_product(
+    conn: asyncpg.Connection, store_id: UUID, *, name: str, price, category: str | None,
+    description: str | None, variants: list[NewVariant],
+) -> UUID:
+    """Create a product with at least one variant (DATABASE.md rule 7), in one transaction."""
+    if not variants:
+        raise ValueError("a product needs at least one variant")
+    search_text = normalize_arabic(name)
+    try:
+        async with conn.transaction():
+            exists = await conn.fetchval(
+                "select 1 from products where store_id = $1 and (name = $2 or search_text = $3)",
+                store_id, name, search_text,
+            )
+            if exists:
+                raise DuplicateError("في منتج بنفس الاسم")
+            product_id = await conn.fetchval(
+                """
+                insert into products (store_id, name, search_text, description, category, price)
+                values ($1, $2, $3, $4, $5, $6)
+                returning id
+                """,
+                store_id, name, search_text, description, category, price,
+            )
+            for v in variants:
+                await _insert_variant(conn, store_id, product_id, v)
+            return product_id
+    except asyncpg.UniqueViolationError as exc:
+        raise DuplicateError(_duplicate_message(exc)) from exc
+
+
+async def add_variant(conn: asyncpg.Connection, store_id: UUID, product_id: UUID, v: NewVariant) -> UUID | None:
+    """Add a variant to an existing product of this store. None if the product isn't in this store."""
+    try:
+        async with conn.transaction():
+            if not await conn.fetchval("select 1 from products where id = $1 and store_id = $2", product_id, store_id):
+                return None
+            # Same name with another spelling ("احمر" vs "أحمر") counts as a duplicate too.
+            names = await conn.fetch(
+                "select name from product_variants where product_id = $1 and store_id = $2", product_id, store_id
+            )
+            if normalize_arabic(variant_name(v.options)) in {normalize_arabic(r["name"]) for r in names}:
+                raise DuplicateError("هالنسخة (نفس اللون والمقاس) موجودة من قبل")
+            return await _insert_variant(conn, store_id, product_id, v)
+    except asyncpg.UniqueViolationError as exc:
+        raise DuplicateError(_duplicate_message(exc)) from exc
+
+
+# --- deleting ----------------------------------------------------------------
+
+class LastVariantError(Exception):
+    """A product must keep at least one variant (DATABASE.md rule 7)."""
+
+
+async def delete_product(conn: asyncpg.Connection, store_id: UUID, product_id: UUID) -> bool:
+    """Delete a product with its variants and their movements (FK cascade).
+
+    Past orders keep working: order_items hold name/price snapshots and the
+    product/variant references become NULL.
+    """
+    status = await conn.execute("delete from products where id = $1 and store_id = $2", product_id, store_id)
+    return status != "DELETE 0"
+
+
+async def delete_variant(conn: asyncpg.Connection, store_id: UUID, variant_id: UUID) -> bool:
+    """Delete one variant. Refuses to delete a product's last variant."""
+    async with conn.transaction():
+        product_id = await conn.fetchval(
+            "select product_id from product_variants where id = $1 and store_id = $2", variant_id, store_id
+        )
+        if product_id is None:
+            return False
+        # Lock the product's variants so two parallel deletes can't remove the last two.
+        count = len(await conn.fetch(
+            "select id from product_variants where product_id = $1 and store_id = $2 for update",
+            product_id, store_id,
+        ))
+        if count <= 1:
+            raise LastVariantError("هاي آخر نسخة بالمنتج. احذف المنتج كله بدلها.")
+        await conn.execute("delete from product_variants where id = $1 and store_id = $2", variant_id, store_id)
+    return True

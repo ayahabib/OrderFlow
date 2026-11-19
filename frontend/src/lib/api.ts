@@ -70,6 +70,51 @@ export const createStore = (input: StoreInput) =>
 export const updateStore = (input: Partial<StoreInput>) =>
   api<Store>('/api/store', { method: 'PATCH', body: JSON.stringify(input) })
 
+// --- products & variants ---
+
+export type Variant = {
+  id: string
+  name: string
+  options: Record<string, string>
+  sku: string | null
+  price_override: string | null
+  effective_price: string
+  stock_quantity: number
+  low_stock_threshold: number
+  is_active: boolean
+}
+
+export type Product = {
+  id: string
+  name: string
+  category: string | null
+  price: string
+  is_active: boolean
+  variants: Variant[]
+}
+
+export const listProducts = () => api<Product[]>('/api/products')
+export const updateProductPrice = (id: string, price: string) =>
+  api<Product>(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify({ price }) })
+export const updateVariant = (id: string, changes: { stock_quantity?: number; price_override?: string | null }) =>
+  api<Variant>(`/api/variants/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
+
+export type VariantInput = {
+  color?: string | null
+  size?: string | null
+  quantity: number
+  price_override?: string | null
+  sku?: string | null
+}
+export type ProductInput = { name: string; price: string; category?: string | null; variants: VariantInput[] }
+
+export const createProduct = (input: ProductInput) =>
+  api<Product>('/api/products', { method: 'POST', body: JSON.stringify(input) })
+export const addVariant = (productId: string, input: VariantInput) =>
+  api<Product>(`/api/products/${productId}/variants`, { method: 'POST', body: JSON.stringify(input) })
+export const deleteProduct = (id: string) => api<null>(`/api/products/${id}`, { method: 'DELETE' })
+export const deleteVariant = (id: string) => api<null>(`/api/variants/${id}`, { method: 'DELETE' })
+
 // --- inventory import ---
 
 export type RowError = { row: number; message: string }
