@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from app.api import me
+from app.api import me, stores
 from app.config import get_settings
 from app.db.pool import create_pool
 
@@ -37,6 +37,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
         return "ok"
 
     app.include_router(me.router)
+    app.include_router(stores.router)
     return app
 
 

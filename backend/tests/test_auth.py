@@ -1,32 +1,12 @@
 """Auth: Supabase JWT verification, GET /api/me, and get_current_store_id."""
 
-import time
 import uuid
-from types import SimpleNamespace
 
-import httpx
-import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import ec
-from fastapi import Depends
 
-from app.api import auth
-from app.api.auth import get_current_store_id
-from app.config import Settings, get_settings
-from app.db.pool import get_db
-from app.main import create_app
-
-TEST_URL = "https://test-project.supabase.co"
-TEST_ISSUER = f"{TEST_URL}/auth/v1"
-HS_SECRET = "test-only-hs256-secret-at-least-32-bytes-long"
-EC_KEY = ec.generate_private_key(ec.SECP256R1())
-OTHER_EC_KEY = ec.generate_private_key(ec.SECP256R1())
-
-
-def make_token(sub=None, *, key=EC_KEY, alg="ES256", exp_in=3600, aud="authenticated", iss=TEST_ISSUER, **extra):
-    claims = {"sub": str(sub or uuid.uuid4()), "aud": aud, "iss": iss,
-              "exp": int(time.time()) + exp_in, "role": "authenticated", **extra}
-    return jwt.encode(claims, key, algorithm=alg, headers={"kid": "test-kid"})
+from tests.authutil import (
+    HS_SECRET, OTHER_EC_KEY, bearer, client_for, insert_auth_user, make_token, patch_jwks, test_settings,
+)
 
 
 class FakeConn:
@@ -41,36 +21,7 @@ class FakeConn:
 
 @pytest.fixture(autouse=True)
 def fake_jwks(monkeypatch):
-    """JWKS lookups return our test EC public key instead of calling Supabase."""
-    client = SimpleNamespace(get_signing_key_from_jwt=lambda token: SimpleNamespace(key=EC_KEY.public_key()))
-    monkeypatch.setattr(auth, "_jwks_client", lambda url: client)
-
-
-def build_app(conn):
-    app = create_app(use_lifespan=False)
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_url=TEST_URL, database_url="postgresql://unused", supabase_jwt_secret=HS_SECRET
-    )
-
-    async def override_db():
-        yield conn
-
-    app.dependency_overrides[get_db] = override_db
-
-    # A test-only route protected by get_current_store_id.
-    @app.get("/api/_store_probe")
-    async def probe(store_id: uuid.UUID = Depends(get_current_store_id)):
-        return {"store_id": str(store_id)}
-
-    return app
-
-
-def client_for(conn):
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn)), base_url="http://test")
-
-
-def bearer(token):
-    return {"Authorization": f"Bearer {token}"}
+    patch_jwks(monkeypatch)
 
 
 # --- 401 cases -------------------------------------------------------------
@@ -84,10 +35,10 @@ async def test_me_without_token_is_401():
 
 @pytest.mark.parametrize("token", [
     "not-a-jwt",
-    make_token(exp_in=-60),                       # expired
-    make_token(aud="anon"),                       # wrong audience
+    make_token(exp_in=-60),                          # expired
+    make_token(aud="anon"),                          # wrong audience
     make_token(iss="https://evil.example/auth/v1"),  # wrong issuer
-    make_token(key=OTHER_EC_KEY),                 # signed by someone else's key
+    make_token(key=OTHER_EC_KEY),                    # signed by someone else's key
     make_token(key="wrong-secret-also-32-bytes-long!!", alg="HS256"),
 ])
 async def test_me_rejects_bad_tokens(token):
@@ -97,11 +48,7 @@ async def test_me_rejects_bad_tokens(token):
 
 
 async def test_hs256_rejected_when_no_secret_configured():
-    app = build_app(FakeConn(None))
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        supabase_url=TEST_URL, database_url="postgresql://unused", supabase_jwt_secret=None
-    )
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+    async with client_for(FakeConn(None), test_settings(supabase_jwt_secret=None)) as c:
         r = await c.get("/api/me", headers=bearer(make_token(key=HS_SECRET, alg="HS256")))
     assert r.status_code == 401
 
@@ -150,11 +97,7 @@ async def test_store_dependency_401_without_token():
 @pytest.mark.db
 async def test_me_looks_up_real_store(db_tx):
     """Uses the real stores table (inside a rolled-back transaction)."""
-    user_id = uuid.uuid4()
-    await db_tx.execute(
-        "insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')",
-        user_id, f"me-test-{user_id.hex[:8]}@example.test",
-    )
+    user_id = await insert_auth_user(db_tx)
     store_id = await db_tx.fetchval(
         "insert into stores (owner_id, name) values ($1, 'متجر الاختبار') returning id", user_id
     )

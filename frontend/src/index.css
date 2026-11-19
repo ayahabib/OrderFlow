@@ -1,7 +1,15 @@
 :root {
   --text: #1f1d24;
   --muted: #6b6375;
-  --bg: #ffffff;
+  --bg: #f6f5f8;
+  --surface: #ffffff;
+  --border: #dedbe3;
+  --accent: #3b5bdb;
+  --accent-text: #ffffff;
+  --error: #c92a2a;
+  --error-bg: #fff0f0;
+  --info: #2b8a3e;
+  --info-bg: #ebfbee;
   font-family: system-ui, 'Segoe UI', Tahoma, 'Noto Sans Arabic', sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -12,19 +20,102 @@
     --text: #f2f0f5;
     --muted: #a8a2b3;
     --bg: #16141a;
+    --surface: #211f27;
+    --border: #3a3642;
+    --accent: #748ffc;
+    --accent-text: #0d0c10;
+    --error: #ff8787;
+    --error-bg: #3a1f22;
+    --info: #8ce99a;
+    --info-bg: #1d3323;
   }
 }
 
-body {
-  margin: 0;
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+h1 { font-size: 1.4rem; margin: 0 0 8px; }
+
+.muted { color: var(--muted); }
+.hint { color: var(--muted); font-weight: normal; font-size: 0.85em; }
+
+.shell { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
 }
 
-.shell {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 32px 16px;
+.stack { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 420px; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
-.shell p {
-  color: var(--muted);
+label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 0.95rem; }
+
+input {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
 }
+
+input[dir='ltr'] { text-align: left; }
+
+/* Lighter than real values so an empty field doesn't look filled in. */
+input::placeholder { color: var(--muted); opacity: 0.55; }
+
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+button {
+  font: inherit;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: default; }
+
+button.link {
+  background: none;
+  color: var(--accent);
+  padding: 4px;
+  font-weight: normal;
+}
+
+.msg { margin: 0; padding: 10px 12px; border-radius: 8px; font-size: 0.95rem; }
+.msg.error { color: var(--error); background: var(--error-bg); }
+.msg.info { color: var(--info); background: var(--info-bg); }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar nav { display: flex; gap: 12px; }
+.topbar nav a { color: var(--muted); text-decoration: none; }
+.topbar nav a.active { color: var(--accent); font-weight: 600; }
+.topbar .spacer { flex: 1; }
