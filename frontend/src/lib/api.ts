@@ -203,3 +203,14 @@ export const createOffer = (input: OfferInput) =>
 export const updateOffer = (id: string, changes: OfferChanges) =>
   api<Offer>(`/api/offers/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
 export const deleteOffer = (id: string) => api<null>(`/api/offers/${id}`, { method: 'DELETE' })
+
+// --- delivery zones ---
+
+export type Zone = { id: string; name: string; fee: string; is_active: boolean }
+
+export const listZones = () => api<Zone[]>('/api/delivery-zones')
+export const createZone = (input: { name: string; fee: string }) =>
+  api<Zone>('/api/delivery-zones', { method: 'POST', body: JSON.stringify(input) })
+export const updateZone = (id: string, changes: Partial<Omit<Zone, 'id'>>) =>
+  api<Zone>(`/api/delivery-zones/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
+export const deleteZone = (id: string) => api<null>(`/api/delivery-zones/${id}`, { method: 'DELETE' })

@@ -8,10 +8,15 @@ type Props = {
   placeholder?: string
   label: string
   width?: string
+  /** Text fields (e.g. a zone name) pass dir="auto" and inputMode="text". */
+  dir?: 'ltr' | 'rtl' | 'auto'
+  inputMode?: 'decimal' | 'numeric' | 'text'
 }
 
 /** A number input that saves on Enter or blur, with saving / saved / error state. */
-export default function EditableCell({ value, validate, onSave, placeholder, label, width = '6rem' }: Props) {
+export default function EditableCell({
+  value, validate, onSave, placeholder, label, width = '6rem', dir = 'ltr', inputMode = 'decimal',
+}: Props) {
   const [text, setText] = useState(value)
   const [lastSaved, setLastSaved] = useState(value)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -56,8 +61,8 @@ export default function EditableCell({ value, validate, onSave, placeholder, lab
   return (
     <span className="editable">
       <input
-        dir="ltr"
-        inputMode="decimal"
+        dir={dir}
+        inputMode={inputMode}
         aria-label={label}
         aria-invalid={state === 'error'}
         className={state === 'error' ? 'invalid' : undefined}

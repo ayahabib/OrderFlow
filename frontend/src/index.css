@@ -185,3 +185,7 @@ select {
 
 .badge.muted-badge { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
 .offer-price { margin-top: 4px; color: var(--info); }
+
+tr.inactive td { opacity: 0.6; }
+.narrow-block { max-width: 420px; }
+.onboarding-wide { max-width: 640px; }
