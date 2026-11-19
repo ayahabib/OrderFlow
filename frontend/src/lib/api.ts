@@ -35,7 +35,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     res = await fetch(`${BASE_URL}${path}`, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        // FormData (file upload) sets its own multipart Content-Type.
+        ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
       },
@@ -68,3 +69,47 @@ export const createStore = (input: StoreInput) =>
   api<Store>('/api/store', { method: 'POST', body: JSON.stringify(input) })
 export const updateStore = (input: Partial<StoreInput>) =>
   api<Store>('/api/store', { method: 'PATCH', body: JSON.stringify(input) })
+
+// --- inventory import ---
+
+export type RowError = { row: number; message: string }
+
+export type ImportPreview = {
+  total_rows: number
+  valid_rows: number
+  errors: RowError[]
+  products: {
+    name: string
+    price: string
+    category: string | null
+    is_new: boolean
+    variants: {
+      row: number
+      name: string
+      quantity: number
+      current_quantity: number | null
+      price_override: string | null
+      sku: string | null
+    }[]
+  }[]
+}
+
+export type ImportResult = {
+  products_created: number
+  products_updated: number
+  variants_created: number
+  variants_updated: number
+  movements: number
+  skipped_rows: RowError[]
+}
+
+function fileForm(file: File): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  return form
+}
+
+export const previewImport = (file: File) =>
+  api<ImportPreview>('/api/products/import/preview', { method: 'POST', body: fileForm(file) })
+export const confirmImport = (file: File) =>
+  api<ImportResult>('/api/products/import/confirm', { method: 'POST', body: fileForm(file) })

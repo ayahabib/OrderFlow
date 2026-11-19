@@ -12,6 +12,7 @@ export default function Layout() {
       <header className="topbar">
         <strong>{store?.name}</strong>
         <nav>
+          <NavLink to="/import">رفع المخزون</NavLink>
           <NavLink to="/settings">الإعدادات</NavLink>
         </nav>
         <span className="spacer" />

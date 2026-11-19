@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import Layout from './components/Layout'
 import CreateStorePage from './pages/CreateStorePage'
+import ImportPage from './pages/ImportPage'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/SettingsPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
@@ -30,6 +31,7 @@ function Dashboard() {
     <Routes>
       <Route element={<Layout />}>
         {/* Orders/Inventory pages come in later tasks; Settings is home for now. */}
+        <Route path="/import" element={<ImportPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/settings" replace />} />
       </Route>

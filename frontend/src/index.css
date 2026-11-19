@@ -105,6 +105,29 @@ button.link {
 .msg.error { color: var(--error); background: var(--error-bg); }
 .msg.info { color: var(--info); background: var(--info-bg); }
 
+.stack.wide, .card.wide { max-width: none; }
+
+.msg ul { margin: 6px 0 0; padding-inline-start: 20px; }
+.error-text { color: var(--error); }
+
+code { font-size: 0.9em; padding: 1px 4px; border-radius: 4px; background: var(--bg); }
+
+.badge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+th, td { padding: 10px 12px; text-align: start; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; }
+tbody tr:last-child td { border-bottom: none; }
+
 .topbar {
   display: flex;
   align-items: center;
