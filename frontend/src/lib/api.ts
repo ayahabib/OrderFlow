@@ -214,3 +214,38 @@ export const createZone = (input: { name: string; fee: string }) =>
 export const updateZone = (id: string, changes: Partial<Omit<Zone, 'id'>>) =>
   api<Zone>(`/api/delivery-zones/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
 export const deleteZone = (id: string) => api<null>(`/api/delivery-zones/${id}`, { method: 'DELETE' })
+
+// --- orders ---
+
+export type OrderStatus = 'new' | 'in_progress' | 'delivered' | 'cancelled'
+
+export type Order = {
+  id: string
+  order_number: number
+  status: OrderStatus
+  customer_name: string | null
+  customer_phone: string | null
+  channel: string
+  delivery_address: string | null
+  zone_name: string | null
+  delivery_fee: string
+  subtotal: string
+  total: string
+  notes: string | null
+  items: { product_name: string; variant_name: string | null; quantity: number; unit_price: string; list_price: string | null; notes: string | null }[]
+  allowed_next: OrderStatus[]
+  created_at: string
+  updated_at: string
+}
+
+export type OrderFilters = { status?: OrderStatus | ''; from?: string; to?: string; q?: string }
+
+export function listOrders(filters: OrderFilters = {}) {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
+  const qs = params.toString()
+  return api<Order[]>(`/api/orders${qs ? `?${qs}` : ''}`)
+}
+
+export const updateOrderStatus = (id: string, status: OrderStatus) =>
+  api<Order>(`/api/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })

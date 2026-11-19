@@ -208,3 +208,12 @@ tr.inactive td { opacity: 0.6; }
 .chat-input input { flex: 1; min-width: 0; }
 .chat .msg { margin: 8px 12px 0; }
 .msg.warn-msg { color: var(--warn); background: var(--warn-bg); }
+
+/* --- orders page --- */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input[type='search'] { flex: 1 1 260px; }
+.filters input[type='date'] { padding: 6px 8px; }
+.badge.status-new { background: var(--accent); color: var(--accent-text); }
+table.orders td { vertical-align: top; }
+table.orders td.wrap { white-space: normal; min-width: 140px; max-width: 220px; }
+ul.items { margin: 0; padding-inline-start: 16px; white-space: normal; min-width: 160px; }

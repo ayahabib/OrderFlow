@@ -12,6 +12,7 @@ export default function Layout() {
       <header className="topbar">
         <strong>{store?.name}</strong>
         <nav>
+          <NavLink to="/orders">الطلبات</NavLink>
           <NavLink to="/products">المنتجات</NavLink>
           <NavLink to="/offers">العروض</NavLink>
           <NavLink to="/import">رفع المخزون</NavLink>

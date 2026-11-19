@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import CreateStorePage from './pages/CreateStorePage'
 import ImportPage from './pages/ImportPage'
 import OffersPage from './pages/OffersPage'
+import OrdersPage from './pages/OrdersPage'
 import ProductsPage from './pages/ProductsPage'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/SettingsPage'
@@ -33,12 +34,13 @@ function Dashboard() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route path="/orders" element={<OrdersPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/offers" element={<OffersPage />} />
         <Route path="/import" element={<ImportPage />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/products" replace />} />
+        <Route path="*" element={<Navigate to="/orders" replace />} />
       </Route>
     </Routes>
   )

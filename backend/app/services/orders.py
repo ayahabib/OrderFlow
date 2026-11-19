@@ -116,3 +116,76 @@ async def place_order(
         )
 
     return PlacedOrder(order_id=order_id, order_number=number, total=totals.total)
+
+
+# --- status changes from the orders page (task 1.10) --------------------------------
+
+# Forward only, plus cancel; delivered and cancelled are final (owner's decision), so
+# stock can never be returned twice.
+ALLOWED = {
+    "new": {"in_progress", "delivered", "cancelled"},
+    "in_progress": {"delivered", "cancelled"},
+    "delivered": set(),
+    "cancelled": set(),
+}
+
+
+class StatusChangeError(Exception):
+    """Transition not allowed from the current status."""
+
+    def __init__(self, current: str, wanted: str):
+        super().__init__(f"{current} -> {wanted}")
+        self.current = current
+        self.wanted = wanted
+
+
+async def change_status(conn: asyncpg.Connection, store_id: UUID, order_id: UUID, new_status: str) -> bool:
+    """Change an order's status. Cancelling returns its stock with 'order_cancel' movements, atomically.
+
+    Returns False if the order isn't in this store. Raises StatusChangeError for a disallowed move.
+    """
+    async with conn.transaction():
+        # Lock the order so two clicks can't both cancel (and return stock twice).
+        current = await conn.fetchval(
+            "select status::text from orders where id = $1 and store_id = $2 for update", order_id, store_id
+        )
+        if current is None:
+            return False
+        if new_status == current:
+            return True  # nothing to do (e.g. a double click)
+        if new_status not in ALLOWED.get(current, set()):
+            raise StatusChangeError(current, new_status)
+
+        if new_status == "cancelled":
+            items = await conn.fetch(
+                """
+                select variant_id, quantity from order_items
+                 where order_id = $1 and store_id = $2 and variant_id is not null
+                 order by variant_id
+                """,
+                order_id, store_id,
+            )
+            for item in items:
+                # The variant may have been deactivated; its stock still comes back.
+                updated = await conn.fetchval(
+                    """
+                    update product_variants set stock_quantity = stock_quantity + $3, updated_at = now()
+                     where id = $1 and store_id = $2
+                    returning id
+                    """,
+                    item["variant_id"], store_id, item["quantity"],
+                )
+                if updated:
+                    await conn.execute(
+                        """
+                        insert into inventory_movements (store_id, variant_id, change, reason, order_id)
+                        values ($1, $2, $3, 'order_cancel', $4)
+                        """,
+                        store_id, item["variant_id"], item["quantity"], order_id,
+                    )
+
+        await conn.execute(
+            "update orders set status = $3::order_status, updated_at = now() where id = $1 and store_id = $2",
+            order_id, store_id, new_status,
+        )
+    return True
