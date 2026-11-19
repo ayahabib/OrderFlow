@@ -117,6 +117,12 @@ create table products (
 create index products_store_idx on products (store_id);
 create index products_search_trgm on products using gin (search_text gin_trgm_ops);
 
+-- مطابقة المنتجات (1.7): normalize_ar نسخة SQL من utils/arabic.py (في test بيتأكد إنهم متطابقين)،
+-- و alias_text الأسماء البديلة بعد التوحيد، بتنحسب لحالها من aliases.
+alter table products
+  add column alias_text text generated always as (alias_search_text(aliases)) stored;
+create index products_alias_trgm on products using gin (alias_text gin_trgm_ops);
+
 create table product_variants (
   id                   uuid primary key default gen_random_uuid(),
   store_id             uuid not null references stores(id) on delete cascade,
