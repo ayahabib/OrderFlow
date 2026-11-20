@@ -260,3 +260,58 @@ export const createTelegramLink = () =>
 export const verifyTelegramLink = () => api<TelegramStatus>('/api/store/telegram/verify', { method: 'POST' })
 export const sendTelegramTest = () => api<null>('/api/store/telegram/test', { method: 'POST' })
 export const unlinkTelegram = () => api<TelegramStatus>('/api/store/telegram', { method: 'DELETE' })
+
+// --- conversations (owner side) ---
+
+export type ConversationMode = 'bot' | 'paused' | 'waiting_owner' | 'owner' | 'closed'
+export type ConversationView = '' | 'waiting' | 'owner' | 'bot' | 'closed'
+
+export type ConversationSummary = {
+  id: string
+  channel: string
+  mode: ConversationMode
+  customer_name: string | null
+  customer_phone: string | null
+  last_message: string | null
+  last_sender: string | null
+  open_escalations: number
+  last_message_at: string
+}
+
+export type ConversationMessage = { id: string; sender: 'customer' | 'bot' | 'owner'; content: string; created_at: string }
+export type ConversationEscalation = { id: string; rule: string | null; question: string; status: string; created_at: string }
+export type OrderDraft = {
+  items: { product_name: string; variant_name: string; quantity: number }[]
+  unresolved: number
+  address: string | null
+  zone_name: string | null
+  phone: string | null
+  waiting_for: string | null
+}
+
+export type ConversationDetail = {
+  id: string
+  channel: string
+  mode: ConversationMode
+  customer_name: string | null
+  customer_phone: string | null
+  can_reply: boolean
+  draft: OrderDraft | null
+  escalations: ConversationEscalation[]
+  messages: ConversationMessage[]
+}
+
+export function listConversations(view: ConversationView, q: string) {
+  const params = new URLSearchParams()
+  if (view) params.set('view', view)
+  if (q) params.set('q', q)
+  const qs = params.toString()
+  return api<ConversationSummary[]>(`/api/conversations${qs ? `?${qs}` : ''}`)
+}
+export const getConversation = (id: string) => api<ConversationDetail>(`/api/conversations/${id}`)
+export const pauseConversation = (id: string) =>
+  api<ConversationDetail>(`/api/conversations/${id}/pause`, { method: 'POST' })
+export const resumeConversation = (id: string, keepOrder: boolean) =>
+  api<ConversationDetail>(`/api/conversations/${id}/resume`, { method: 'POST', body: JSON.stringify({ keep_order: keepOrder }) })
+export const replyToConversation = (id: string, text: string) =>
+  api<ConversationDetail>(`/api/conversations/${id}/reply`, { method: 'POST', body: JSON.stringify({ text }) })

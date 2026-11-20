@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from app.api import me, notifications, offers, orders, products, stores, zones
+from app.api import conversations, me, notifications, offers, orders, products, stores, zones
 from app.config import get_settings
 from app.webhooks import web_chat
 from app.db.pool import create_pool
@@ -45,6 +45,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.include_router(offers.router)
     app.include_router(zones.router)
     app.include_router(orders.router)
+    app.include_router(conversations.router)
     app.include_router(web_chat.router)
     return app
 

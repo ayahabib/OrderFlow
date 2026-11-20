@@ -111,3 +111,86 @@ async def customer_messages(conn, store_id: UUID, customer_id: UUID, limit: int 
             data["metadata"] = json.loads(data["metadata"])
         result.append(data)
     return result
+
+
+# --- owner dashboard: conversations page (TASKS.md 1.12) -------------------------------
+
+# view filter -> SQL condition on c (fixed strings, never user input)
+VIEWS = {
+    "waiting": "c.status = 'waiting_owner'",
+    "owner": "c.status <> 'closed' and c.status <> 'waiting_owner' and (c.status = 'owner' or c.bot_paused)",
+    "bot": "c.status = 'bot' and not c.bot_paused",
+    "closed": "c.status = 'closed'",
+}
+
+
+async def list_conversations(conn, store_id: UUID, *, view: str | None, q: str | None,
+                             limit: int, offset: int) -> list[asyncpg.Record]:
+    """Newest activity first. q matches the customer's name/phone or any message text (normalized Arabic)."""
+    condition = VIEWS.get(view or "", "true")
+    return await conn.fetch(
+        f"""
+        select c.id, c.channel::text as channel, c.status::text as status, c.bot_paused,
+               c.last_message_at, c.created_at,
+               cu.name as customer_name, cu.phone as customer_phone,
+               lm.content as last_message, lm.sender as last_sender,
+               (select count(*) from escalations e
+                 where e.store_id = c.store_id and e.conversation_id = c.id and e.status = 'open') as open_escalations
+          from conversations c
+          join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
+          left join lateral (
+                select m.content, m.sender::text as sender from messages m
+                 where m.store_id = c.store_id and m.conversation_id = c.id
+                 order by m.created_at desc, m.id desc limit 1) lm on true
+         where c.store_id = $1 and {condition}
+           and ($2::text is null
+                or position(normalize_ar($2) in normalize_ar(coalesce(cu.name, '') || ' ' || coalesce(cu.phone, ''))) > 0
+                or exists (select 1 from messages m
+                            where m.store_id = c.store_id and m.conversation_id = c.id
+                              and position(normalize_ar($2) in normalize_ar(m.content)) > 0))
+         order by c.last_message_at desc, c.id
+         limit $3 offset $4
+        """,
+        store_id, (q or "").strip() or None, limit, offset,
+    )
+
+
+async def get_conversation(conn, store_id: UUID, conversation_id: UUID, *, lock: bool = False) -> asyncpg.Record | None:
+    """One conversation with its customer. lock=True takes the same row lock as the engine's respond step."""
+    return await conn.fetchrow(
+        f"""
+        select c.id, c.channel::text as channel, c.status::text as status, c.bot_paused, c.bot_state,
+               c.last_message_at, c.created_at,
+               cu.name as customer_name, cu.phone as customer_phone, cu.external_id
+          from conversations c
+          join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
+         where c.id = $1 and c.store_id = $2
+         {"for update of c" if lock else ""}
+        """,
+        conversation_id, store_id,
+    )
+
+
+async def conversation_messages(conn, store_id: UUID, conversation_id: UUID, limit: int = 500) -> list[asyncpg.Record]:
+    """Oldest first (the latest `limit` messages)."""
+    return await conn.fetch(
+        """
+        select * from (
+          select id, sender::text as sender, content, created_at from messages
+           where store_id = $1 and conversation_id = $2
+           order by created_at desc, id desc limit $3
+        ) recent order by created_at, id
+        """,
+        store_id, conversation_id, limit,
+    )
+
+
+async def conversation_escalations(conn, store_id: UUID, conversation_id: UUID) -> list[asyncpg.Record]:
+    return await conn.fetch(
+        """
+        select id, rule, question, status::text as status, created_at from escalations
+         where store_id = $1 and conversation_id = $2
+         order by created_at desc
+        """,
+        store_id, conversation_id,
+    )

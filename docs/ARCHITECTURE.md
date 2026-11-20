@@ -245,8 +245,11 @@ class ChannelAdapter(Protocol):
 3. لو `save_to_kb = true`: نعمل embedding للسؤال والجواب ونضيفهم لـ `knowledge_base` (`source = 'owner_answer'`)، ويفضل صاحب المتجر يقدر يعدّل صياغة السؤال/الجواب قبل الحفظ.
 4. `escalation.status = 'answered'`، وبترجع المحادثة `bot` (أو بتضل `owner` حسب اختيار صاحب المتجر).
 
-### الإيقاف اليدوي
-زر "أوقف البوت" بالمحادثة بيحط `bot_paused = true`.
+### الإيقاف اليدوي (1.12)
+- زر "أوقف البوت" بالمحادثة بيحط `bot_paused = true`.
+- رد صاحب المتجر (`POST /api/conversations/{id}/reply`) بيتخزن `sender = 'owner'`، بينبعت عبر adapter القناة (`channels/registry.py`)، وبيحط `status = 'owner'`: البوت بيسكت لحد ما صاحب المتجر يرجّعه.
+- "رجّع البوت" (`/resume`) بيرجّع `status = 'bot'` و `bot_paused = false`. إذا في طلب مفتوح، صاحب المتجر بيختار: **كمّل نفس الطلب** (`keep_order = true`) أو **ابدأ من جديد** (بيمسح `bot_state`). الطلبات المؤكدة ما بتتأثر.
+- الاستئناف ما بيسكّر سطور `escalations`: الجواب عليها وخيار "احفظ للبوت" بصفحة الأسئلة المحولة (2.3).
 
 ## 8. شات صاحب المتجر (تعديل المخزون)
 
