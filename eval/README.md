@@ -55,7 +55,9 @@
 {"id": "esc-001", "split": "dev", "message": "...", "should_escalate": true, "reason": "complaint", "tags": ["complaint"]}
 ```
 
-الأسباب: `complaint`, `discount`, `large_order`, `allergy_ingredients`, `unknown_zone`, `human_requested`, `not_in_data`, `order_status`.
+الأسباب: `complaint`, `discount`, `large_order`, `allergy_ingredients`, `unknown_zone`, `human_requested`, `not_in_data`, `order_status`, `return_request`.
+
+- `return_request` (بدي ارجع/أبدّل): طلب إرجاع أو تبديل بعد الطلب، دايماً لصاحب المتجر (أضيف بـ 1.11).
 
 - `order_status` (وين طلبيتي؟) بتتحول **بالـ MVP فقط**، لأنه رابط متابعة الطلب بالمرحلة 3.
 - المناطق المسجلة: نابلس، رام الله، جنين، طولكرم. غيرها (الخليل، بيت لحم) = `unknown_zone`، وهاي **ما بتتحوّل** (قرار صاحب المتجر): البوت بيجاوب من جدول المناطق إنه ما منوصّل هناك.
@@ -78,6 +80,8 @@
 ### التحويل (المهمة 1.11)
 - **Recall**: كل رسالة `should_escalate: true` لازم تتحول. الهدف **100%**.
 - **False escalation rate**: نسبة الرسائل السالبة الي اتحولت بالغلط. الهدف أقل ما يمكن، بس أهم من الـ recall بدرجة أقل.
+- التشغيل: `cd backend && uv run python ../eval/run_escalation_eval.py --split all` (أو `--offline` للكلمات المفتاحية بس بدون API).
+- أسئلة جوابها بالداتا (سعر، دوام، مناطق، توفر) لسا بتتحول لحد الـ RAG (2.2)، والسكربت بيعدّها لحالها مش كـ false positive.
 
 ## ملاحظات مهمة
 

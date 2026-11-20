@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     web_chat_secret: SecretStr | None = None  # signs web chat simulator session tokens
     public_base_url: str = "http://localhost:8000"
 
+    # Owner notifications (task 1.11): one platform bot from @BotFather sends escalation alerts.
+    telegram_notify_bot_token: SecretStr | None = None
+    dashboard_url: str = "http://localhost:5173"  # links in owner alerts
+
     # Frontend origins allowed by CORS (comma-separated)
     cors_origins: str = "http://localhost:5173"
 

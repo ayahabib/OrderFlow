@@ -24,6 +24,7 @@ from app.db import conversations as conv_db
 from app.db.pool import get_db, get_db_factory
 from app.engine import handler
 from app.llm.client import get_llm
+from app.services.notifications import get_notifier
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/web/{store_id}", tags=["web chat"])
@@ -88,10 +89,13 @@ async def start_session(
     return SessionOut(session_token=web.make_token(secret, store_id, session_id), customer_id=session_id)
 
 
-async def _respond_in_background(db_factory, llm, store_id: UUID, conversation_id: UUID, to: str, text: str) -> None:
+async def _respond_in_background(
+    db_factory, llm, notifier, dashboard_url: str, store_id: UUID, conversation_id: UUID, to: str, text: str,
+) -> None:
     try:
         async with db_factory() as conn:
-            await handler.respond(conn, store_id, conversation_id, to, text, web.WebAdapter(), llm)
+            await handler.respond(conn, store_id, conversation_id, to, text, web.WebAdapter(), llm,
+                                  notifier=notifier, dashboard_url=dashboard_url)
     except Exception:
         # The customer's message is already stored; a failed reply must not crash anything.
         log.exception("web chat reply failed (conversation=%s)", conversation_id)
@@ -107,6 +111,7 @@ async def post_message(
     conn: asyncpg.Connection = Depends(get_db),
     db_factory=Depends(get_db_factory),
     llm=Depends(get_llm),
+    notifier=Depends(get_notifier),
 ) -> MessageAck:
     session_id = _session(settings, store_id, x_session_token)
     await _require_store(conn, store_id)
@@ -120,7 +125,8 @@ async def post_message(
     if result.duplicate:
         return MessageAck(status="duplicate")
     if result.bot_should_reply:
-        background.add_task(_respond_in_background, db_factory, llm, store_id, result.conversation_id, session_id, body.text)
+        background.add_task(_respond_in_background, db_factory, llm, notifier, settings.dashboard_url,
+                            store_id, result.conversation_id, session_id, body.text)
     return MessageAck(status="received")
 
 

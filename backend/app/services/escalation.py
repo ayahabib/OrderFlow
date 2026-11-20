@@ -1,8 +1,9 @@
-"""Hand a conversation to the store owner (minimal version for the order flow).
+"""Hand a conversation to the store owner.
 
 Creates an `escalations` row and sets the conversation to 'waiting_owner', so the
-bot stops replying (handler checks the status). Task 1.11 adds the keyword rules,
-the Telegram notification and the escalation eval on top of this.
+bot stops replying (handler checks the status). Which messages escalate is decided in
+engine/rules.py and engine/order_flow.py; the owner's Telegram alert is sent by the
+handler after the transaction commits (services/notifications.py).
 """
 
 from typing import Literal
@@ -12,7 +13,7 @@ import asyncpg
 
 Rule = Literal[
     "complaint", "discount", "large_order", "allergy_ingredients", "unknown_zone",
-    "human_requested", "not_in_data", "order_status", "llm_failure",
+    "human_requested", "not_in_data", "order_status", "return_request", "llm_failure",
 ]
 
 # escalation_reason enum: forced_rule | low_confidence | customer_requested
@@ -24,6 +25,11 @@ CUSTOMER_REPLY = {
     # Only used when the store has no delivery zones set up; out-of-area customers are declined in order_flow.
     "unknown_zone": "منطقتك مش من المناطق المسجلة عنا. حوّلت طلبك لصاحب المتجر ليتأكد من التوصيل ويرد عليك.",
     "llm_failure": "وصلتني رسالتك، وحوّلتها لصاحب المتجر ليرد عليك بأقرب وقت.",
+    "discount": "الأسعار الخاصة والخصومات بيقررها صاحب المتجر. حوّلتله رسالتك وبيرد عليك بأقرب وقت.",
+    "large_order": "الطلبيات الكبيرة بيتابعها صاحب المتجر بنفسه. حوّلتله طلبك وبيتواصل معك بأقرب وقت.",
+    "allergy_ingredients": "ما بدي أعطيك معلومة غلط عن المكونات أو الحساسية. حوّلت سؤالك لصاحب المتجر وبيرد عليك.",
+    "order_status": "حوّلت سؤالك عن طلبك لصاحب المتجر ليتأكد ويرد عليك بأقرب وقت.",
+    "return_request": "حوّلت طلب الإرجاع أو التبديل لصاحب المتجر وبيتواصل معك بأقرب وقت.",
 }
 DEFAULT_REPLY = "بتأكدلك من هالشي وبرجعلك. حوّلت رسالتك لصاحب المتجر."
 

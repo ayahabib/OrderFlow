@@ -1033,6 +1033,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "defusedxml" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "openai" },
     { name = "openpyxl" },
     { name = "pydantic-settings" },
@@ -1044,7 +1045,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
@@ -1055,6 +1055,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "openai", specifier = ">=3.55.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pydantic-settings", specifier = ">=2.16.3" },
@@ -1066,7 +1067,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.27" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=1.5.0" },
 ]

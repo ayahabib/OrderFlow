@@ -17,6 +17,7 @@ from app.db.pool import get_db, get_db_factory
 from app.llm.client import get_llm
 from app.llm.schemas import MessageAnalysis
 from app.main import create_app
+from app.services.notifications import get_notifier
 
 TEST_URL = "https://test-project.supabase.co"
 TEST_ISSUER = f"{TEST_URL}/auth/v1"
@@ -73,11 +74,13 @@ def analysis(**kw) -> MessageAnalysis:
     return MessageAnalysis(**{**base, **kw})
 
 
-def build_app(conn, settings: Settings | None = None, llm=None):
+def build_app(conn, settings: Settings | None = None, llm=None, notifier=None):
     app = create_app(use_lifespan=False)
     app.dependency_overrides[get_settings] = lambda: settings or test_settings()
     fake_llm = llm if llm is not None else ScriptedLLM()
     app.dependency_overrides[get_llm] = lambda: fake_llm
+    # No real Telegram in tests: None (alerts off) unless a FakeNotifier is passed.
+    app.dependency_overrides[get_notifier] = lambda: notifier
 
     async def override_db():
         yield conn
@@ -99,8 +102,35 @@ def build_app(conn, settings: Settings | None = None, llm=None):
     return app
 
 
-def client_for(conn, settings: Settings | None = None, llm=None) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn, settings, llm)), base_url="http://test")
+def client_for(conn, settings: Settings | None = None, llm=None, notifier=None) -> httpx.AsyncClient:
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn, settings, llm, notifier)), base_url="http://test")
+
+
+class FakeNotifier:
+    """Stands in for TelegramNotifier: records sent messages, never calls Telegram."""
+
+    link_secret = b"test-link-secret"
+
+    def __init__(self, payloads: list[tuple[int, str]] | None = None, fail: bool = False, has_webhook: bool = False):
+        self.sent: list[tuple[int, str]] = []
+        self.payloads = payloads or []
+        self.fail = fail
+        self.has_webhook = has_webhook
+
+    async def send(self, chat_id: int, text: str) -> None:
+        from app.services.notifications import NotifyError
+        if self.fail:
+            raise NotifyError("telegram sendMessage failed: 403 Forbidden")
+        self.sent.append((chat_id, text))
+
+    async def bot_username(self) -> str:
+        return "test_notify_bot"
+
+    async def start_payloads(self) -> list[tuple[int, str]]:
+        from app.services.notifications import NotifyError
+        if self.has_webhook:
+            raise NotifyError("telegram getUpdates failed: 409 Conflict", 409)
+        return self.payloads
 
 
 async def insert_auth_user(conn, user_id: uuid.UUID | None = None) -> uuid.UUID:

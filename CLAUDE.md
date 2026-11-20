@@ -66,7 +66,7 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 - Backend: `cd backend && uv run uvicorn app.main:app --reload`
 - Backend tests: `cd backend && uv run pytest`
 - Frontend: `cd frontend && npm install && npm run dev` (React + TypeScript + Vite)
-- Eval: `cd backend && uv run python ../eval/run_eval.py`
+- Eval: `cd backend && uv run python ../eval/run_eval.py` (extraction), `uv run python ../eval/run_escalation_eval.py --split all` (forced escalation; `--offline` = keywords only, no API)
 
 ## Testing and evaluation
 

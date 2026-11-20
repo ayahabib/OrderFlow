@@ -1,6 +1,7 @@
 """Order flow state machine (ARCHITECTURE.md section 5). State lives in conversations.bot_state.
 
 One customer message -> `handle` -> (reply, new state). Order of work:
+0. Forced-escalation keywords (engine/rules.py), before anything else and without the LLM.
 1. Cheap deterministic steps first (buttons, and short answers to the bot's open question:
    a size/color from the offered list, a phone number, a zone name, yes/no).
 2. Otherwise one LLM call (intent + extraction), with the bot's last question as context.
@@ -23,6 +24,7 @@ from pydantic import BaseModel, Field
 from app.channels.base import Button, OutboundMessage
 from app.llm.client import LLM, LLMError
 from app.llm.extraction import analyze_message, clean_size
+from app.engine import rules
 from app.services import delivery, escalation, order_totals, orders
 from app.services.product_matching import clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
@@ -216,6 +218,11 @@ async def _decline_area(ctx: Context) -> Outcome:
 async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
     notes: list[str] = []
 
+    # 0. Hard rule 5: complaint, discount, allergy, "talk to a person"... the bot never continues alone.
+    rule = rules.keyword_rule(text)
+    if rule:
+        return await _escalate(ctx, state, text, rule)
+
     # 1. Buttons (exact words only).
     action = button_action(text)
     if action == "cancel":
@@ -253,7 +260,7 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
             return await _confirm(ctx, state, notes)
         if state.pending and state.pending.kind == "stock":
             return await _answer_stock(ctx, state, True, notes)
-    if intent == "question" and not analysis.items:
+    if rules.llm_rule(analysis) == "not_in_data":
         # Answering from store data (RAG) is Phase 2; until then the owner answers (hard rule 5).
         return await _escalate(ctx, state, text, "not_in_data")
 

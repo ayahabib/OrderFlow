@@ -46,3 +46,12 @@ async def update_store(conn: asyncpg.Connection, store_id: UUID, changes: dict) 
         f"update stores set {sets} where id = $1 returning {STORE_COLUMNS}",
         store_id, *fields.values(),
     )
+
+
+async def get_owner_telegram_chat_id(conn: asyncpg.Connection, store_id: UUID) -> int | None:
+    return await conn.fetchval("select owner_telegram_chat_id from stores where id = $1", store_id)
+
+
+async def set_owner_telegram_chat_id(conn: asyncpg.Connection, store_id: UUID, chat_id: int | None) -> None:
+    """Set by the link flow (chat id comes from Telegram, never from the request body)."""
+    await conn.execute("update stores set owner_telegram_chat_id = $2 where id = $1", store_id, chat_id)

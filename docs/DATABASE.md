@@ -300,7 +300,8 @@ create table escalations (
   question         text not null,
   reason           escalation_reason not null,
   rule             text,                         -- السبب التفصيلي: complaint, discount, large_order, allergy_ingredients,
-                                                 -- unknown_zone, human_requested, not_in_data, order_status
+                                                 -- unknown_zone, human_requested, not_in_data, order_status,
+                                                 -- return_request, llm_failure
   status           escalation_status not null default 'open',
   owner_answer     text,
   save_to_kb       boolean,                      -- true = "احفظ للبوت"، false = "جواب خاص"

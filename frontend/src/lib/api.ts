@@ -249,3 +249,14 @@ export function listOrders(filters: OrderFilters = {}) {
 
 export const updateOrderStatus = (id: string, status: OrderStatus) =>
   api<Order>(`/api/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+
+// --- owner notifications (Telegram) ---
+
+export type TelegramStatus = { available: boolean; linked: boolean }
+
+export const getTelegramStatus = () => api<TelegramStatus>('/api/store/telegram')
+export const createTelegramLink = () =>
+  api<{ url: string; expires_in: number }>('/api/store/telegram/link', { method: 'POST' })
+export const verifyTelegramLink = () => api<TelegramStatus>('/api/store/telegram/verify', { method: 'POST' })
+export const sendTelegramTest = () => api<null>('/api/store/telegram/test', { method: 'POST' })
+export const unlinkTelegram = () => api<TelegramStatus>('/api/store/telegram', { method: 'DELETE' })

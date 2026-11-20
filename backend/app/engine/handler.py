@@ -4,8 +4,9 @@ Two steps, so webhooks can answer fast (hard rule 11):
 1. `ingest` (inside the webhook request): find/create the customer and conversation,
    store the message once (duplicates are ignored). Cheap, and the message is safe
    in the DB before we return 200.
-2. `respond` (background task): run the order flow (engine/order_flow.py) and send
-   the reply. Task 1.11 adds keyword escalation rules in front of it, 2.2 adds Q&A.
+2. `respond` (background task): run the order flow (engine/order_flow.py, which applies
+   the forced-escalation rules first), send the reply, and alert the owner on Telegram
+   when the conversation was handed over. Task 2.2 adds Q&A.
 """
 
 import json
@@ -19,6 +20,7 @@ from app.channels.base import ChannelAdapter, InboundMessage
 from app.db import conversations as db
 from app.engine import order_flow
 from app.llm.client import LLM
+from app.services import notifications
 
 log = logging.getLogger(__name__)
 
@@ -53,8 +55,13 @@ async def ingest(conn: asyncpg.Connection, msg: InboundMessage) -> Ingested:
 async def respond(
     conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID, to: str, text: str,
     adapter: ChannelAdapter, llm: LLM | None,
+    notifier: notifications.Notifier | None = None, dashboard_url: str = "",
 ) -> None:
-    """Background step: run the order flow, store the reply and the new state, deliver it."""
+    """Background step: run the order flow, store the reply and the new state, deliver it.
+
+    On escalation the owner's alert goes out after the transaction commits, so a slow or
+    failing Telegram call never holds the conversation lock or rolls the escalation back.
+    """
     async with conn.transaction():
         # Lock the conversation: messages of one customer are handled one at a time,
         # so each step sees the state the previous one saved.
@@ -99,3 +106,9 @@ async def respond(
     except Exception:
         # The reply is stored; delivery problems are logged without the customer's text.
         log.exception("send failed (channel=%s, conversation=%s)", adapter.channel, conversation_id)
+
+    if outcome.escalated:
+        try:
+            await notifications.notify_escalation(conn, notifier, store_id, conversation_id, dashboard_url)
+        except Exception:
+            log.exception("owner alert failed (conversation=%s)", conversation_id)
