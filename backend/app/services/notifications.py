@@ -25,6 +25,7 @@ from uuid import UUID
 import asyncpg
 import httpx
 
+from app.channels.telegram_api import TelegramAPI, TelegramError
 from app.config import Settings, get_settings
 
 log = logging.getLogger(__name__)
@@ -50,10 +51,8 @@ _MESSAGE_CHARS = 300   # per message
 _ALERT_CHARS = 3800    # Telegram's limit is 4096
 
 
-class NotifyError(Exception):
-    def __init__(self, message: str, error_code: int | None = None):
-        super().__init__(message)
-        self.error_code = error_code  # Telegram's code, e.g. 409 = bot has a webhook (getUpdates refused)
+# Telegram errors carry error_code, e.g. 409 = the bot has a webhook, so getUpdates is refused.
+NotifyError = TelegramError
 
 
 class Notifier(Protocol):
@@ -63,11 +62,11 @@ class Notifier(Protocol):
 
 
 class TelegramNotifier:
-    """Minimal Telegram Bot API client (sendMessage, getMe, getUpdates)."""
+    """The platform notify bot: sendMessage, getMe, getUpdates."""
 
     def __init__(self, token: str, client: httpx.AsyncClient | None = None):
         self._token = token
-        self._client = client
+        self._api = TelegramAPI(token, client)
         self._username: str | None = None
 
     @property
@@ -76,21 +75,7 @@ class TelegramNotifier:
         return hashlib.sha256(b"owner-link:" + self._token.encode()).digest()
 
     async def _call(self, method: str, payload: dict) -> object:
-        url = f"https://api.telegram.org/bot{self._token}/{method}"
-        try:
-            if self._client is not None:
-                response = await self._client.post(url, json=payload, timeout=10)
-            else:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(url, json=payload, timeout=10)
-            data = response.json()
-        except (httpx.HTTPError, ValueError) as exc:
-            # Never log the exception text: it can contain the URL, which contains the token.
-            raise NotifyError(f"telegram {method} failed: {type(exc).__name__}") from None
-        if not data.get("ok"):
-            raise NotifyError(f"telegram {method} failed: {data.get('error_code')} {data.get('description', '')[:100]}",
-                              data.get("error_code"))
-        return data["result"]
+        return await self._api.call(method, payload)
 
     async def send(self, chat_id: int, text: str) -> None:
         await self._call("sendMessage", {"chat_id": chat_id, "text": text, "disable_web_page_preview": True})

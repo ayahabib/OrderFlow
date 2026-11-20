@@ -1,14 +1,30 @@
-"""Pick the adapter that delivers to a conversation's channel.
+"""Pick the adapter that delivers to a conversation's channel (used for owner replies).
 
-Web is the only connected channel for now; Telegram comes in task 1.13, WhatsApp in 2.5.
+Web needs nothing. Telegram uses the store's own connected bot. WhatsApp comes in task 2.5.
 """
 
+from uuid import UUID
+
+import asyncpg
+
 from app.channels.base import ChannelAdapter
+from app.channels.telegram import TelegramAdapter
 from app.channels.web import WebAdapter
+from app.config import Settings
+from app.db import channels as channels_db
+from app.utils.crypto import CryptoError
 
 
-def adapter_for(channel: str) -> ChannelAdapter | None:
-    """None when the channel can't send yet (the caller tells the owner instead of pretending)."""
+async def adapter_for(conn: asyncpg.Connection, settings: Settings, store_id: UUID, channel: str) -> ChannelAdapter | None:
+    """None when the channel can't send right now (the caller tells the owner instead of pretending)."""
     if channel == "web":
         return WebAdapter()
+    if channel == "telegram":
+        row = await channels_db.get_store_channel(conn, store_id, "telegram")
+        if row is None or not row["is_active"] or not row["credentials"]:
+            return None
+        try:
+            return TelegramAdapter.from_credentials(settings, row["credentials"])
+        except (CryptoError, KeyError):
+            return None
     return None

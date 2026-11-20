@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 from app.api.auth import get_current_store_id
 from app.channels.base import OutboundMessage
 from app.channels.registry import adapter_for
+from app.config import Settings, get_settings
 from app.db import conversations as db
 from app.db.pool import get_db
 from app.engine.order_flow import BotState
@@ -126,14 +127,14 @@ def _draft(raw) -> DraftOut | None:
     )
 
 
-async def _detail(conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID) -> ConversationDetail:
+async def _detail(conn: asyncpg.Connection, settings: Settings, store_id: UUID, conversation_id: UUID) -> ConversationDetail:
     row = await db.get_conversation(conn, store_id, conversation_id)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=NOT_FOUND)
     return ConversationDetail(
         id=row["id"], channel=row["channel"], mode=_mode(row["status"], row["bot_paused"]),
         customer_name=row["customer_name"], customer_phone=row["customer_phone"],
-        can_reply=adapter_for(row["channel"]) is not None and row["status"] != "closed",
+        can_reply=row["status"] != "closed" and await adapter_for(conn, settings, store_id, row["channel"]) is not None,
         draft=_draft(row["bot_state"]),
         escalations=[EscalationOut(**dict(e)) for e in await db.conversation_escalations(conn, store_id, conversation_id)],
         messages=[MessageOut(**dict(m)) for m in await db.conversation_messages(conn, store_id, conversation_id)],
@@ -167,8 +168,9 @@ async def get_conversation(
     conversation_id: UUID,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> ConversationDetail:
-    return await _detail(conn, store_id, conversation_id)
+    return await _detail(conn, settings, store_id, conversation_id)
 
 
 @router.post("/{conversation_id}/pause", response_model=ConversationDetail)
@@ -176,12 +178,13 @@ async def pause_bot(
     conversation_id: UUID,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> ConversationDetail:
     async with conn.transaction():
         await _locked(conn, store_id, conversation_id)
         await conn.execute("update conversations set bot_paused = true where id = $1 and store_id = $2",
                            conversation_id, store_id)
-    return await _detail(conn, store_id, conversation_id)
+    return await _detail(conn, settings, store_id, conversation_id)
 
 
 @router.post("/{conversation_id}/resume", response_model=ConversationDetail)
@@ -190,6 +193,7 @@ async def resume_bot(
     body: ResumeIn | None = None,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> ConversationDetail:
     keep_order = body.keep_order if body else False
     async with conn.transaction():
@@ -202,7 +206,7 @@ async def resume_bot(
             """,
             conversation_id, store_id,
         )
-    return await _detail(conn, store_id, conversation_id)
+    return await _detail(conn, settings, store_id, conversation_id)
 
 
 @router.post("/{conversation_id}/reply", response_model=ConversationDetail)
@@ -211,10 +215,11 @@ async def owner_reply(
     body: ReplyIn,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> ConversationDetail:
     async with conn.transaction():
         row = await _locked(conn, store_id, conversation_id)
-        adapter = adapter_for(row["channel"])
+        adapter = await adapter_for(conn, settings, store_id, row["channel"])
         if adapter is None:
             raise HTTPException(status.HTTP_409_CONFLICT, detail="هالقناة لسا مش مربوطة للرد من الداشبورد.")
         await db.insert_message(conn, store_id, conversation_id, "owner", body.text, {})
@@ -229,4 +234,4 @@ async def owner_reply(
     except Exception:
         # Stored and visible in the history; delivery problems are logged without the text.
         log.exception("owner reply not delivered (channel=%s, conversation=%s)", row["channel"], conversation_id)
-    return await _detail(conn, store_id, conversation_id)
+    return await _detail(conn, settings, store_id, conversation_id)

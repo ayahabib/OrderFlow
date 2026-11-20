@@ -315,3 +315,17 @@ export const resumeConversation = (id: string, keepOrder: boolean) =>
   api<ConversationDetail>(`/api/conversations/${id}/resume`, { method: 'POST', body: JSON.stringify({ keep_order: keepOrder }) })
 export const replyToConversation = (id: string, text: string) =>
   api<ConversationDetail>(`/api/conversations/${id}/reply`, { method: 'POST', body: JSON.stringify({ text }) })
+
+// --- customer channels ---
+
+export type TelegramChannelStatus = {
+  connected: boolean
+  bot_username: string | null
+  webhook_ok: boolean | null
+  webhook_error: string | null
+}
+
+export const getTelegramChannel = () => api<TelegramChannelStatus>('/api/channels/telegram')
+export const connectTelegramChannel = (botToken: string) =>
+  api<TelegramChannelStatus>('/api/channels/telegram', { method: 'POST', body: JSON.stringify({ bot_token: botToken }) })
+export const disconnectTelegramChannel = () => api<TelegramChannelStatus>('/api/channels/telegram', { method: 'DELETE' })

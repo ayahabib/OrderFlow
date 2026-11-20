@@ -1,4 +1,5 @@
 import StoreForm from '../components/StoreForm'
+import TelegramChannel from '../components/TelegramChannel'
 import TelegramLink from '../components/TelegramLink'
 import ZonesEditor from '../components/ZonesEditor'
 import { updateStore } from '../lib/api'
@@ -28,6 +29,14 @@ export default function SettingsPage() {
       </p>
       <div className="card wide">
         <ZonesEditor currency={store.currency} />
+      </div>
+
+      <h2 id="channel-telegram">قناة Telegram للعملاء</h2>
+      <p className="muted small">
+        العملاء بيراسلوا بوت متجرك على Telegram، والبوت بيستقبل طلباتهم متل المحاكي بالظبط.
+      </p>
+      <div className="card wide narrow-block">
+        <TelegramChannel />
       </div>
 
       <h2 id="telegram">إشعارات Telegram</h2>

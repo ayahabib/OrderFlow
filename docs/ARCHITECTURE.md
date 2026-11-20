@@ -127,6 +127,8 @@ class ChannelAdapter(Protocol):
 | WhatsApp | `GET/POST /webhooks/whatsapp` | `phone_number_id` من الـ payload ← `store_channels.external_id` | verify token (للـ GET) وتوقيع الطلب (للـ POST) |
 | Web chat | `POST /webhooks/web/{store_id}` | من المسار | token للجلسة |
 
+**Telegram (1.13):** بوت المتجر الخاص (غير بوت إشعارات المنصة). الربط من الإعدادات: `POST /api/channels/telegram {bot_token}` ← `getMe` ← التوكن بيتخزن مشفّر (Fernet) بـ `store_channels.credentials` ← `setWebhook` على `PUBLIC_BASE_URL/webhooks/telegram/{channel_id}` مع `secret_token` مشتق بـ HMAC من `TELEGRAM_WEBHOOK_SECRET` و `channel_id`. المحادثات الخاصة بس؛ أزرار التأكيد inline keyboard، وكبسة الزر بترجع كنص عنوان الزر. ممنوع نفس البوت لمتجرين، وممنوع بوت الإشعارات.
+
 ملاحظات:
 - الـ Webhook لازم يرجع **200 بسرعة**، والمعالجة الثقيلة (LLM) بتصير بـ background task، وإلا القناة ممكن تعيد إرسال نفس الرسالة.
 - **منع التكرار (idempotency):** نخزن `external_message_id` بـ `messages.metadata` ونتجاهل الرسالة لو إجت مرتين.
