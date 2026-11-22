@@ -12,6 +12,7 @@ One customer message -> `handle` -> (reply, new state). Order of work:
 The LLM never produces numbers: prices, fees and totals come from services/order_totals.py.
 """
 
+import json
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -24,6 +25,7 @@ from pydantic import BaseModel, Field
 from app.channels.base import Button, OutboundMessage
 from app.llm.client import LLM, LLMError
 from app.llm.embeddings import Embedder
+from app.llm.edits import extract_edits
 from app.llm.extraction import analyze_message, clean_size
 from app.engine import qa, rules
 from app.services import delivery, escalation, order_totals, orders
@@ -264,6 +266,8 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
             return await _answer_stock(ctx, state, True, notes)
     if intent == "question":
         return await _answer_question(ctx, state, text, analysis)
+    if intent == "edit_order" and state.items:
+        return await _edit_order(ctx, state, text, notes)
 
     changed = _apply_analysis(state, analysis, text)
     if state.pending and state.pending.kind == "zone":
@@ -280,6 +284,61 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
 
     if state.mode == "awaiting_confirmation":
         state.mode = "collecting"  # something changed after the summary: show a fresh one
+    return await _advance(ctx, state, notes)
+
+
+EDIT_UNCLEAR = "شو بدك تعدّل بالظبط؟ طلبك هلق:"
+
+
+async def _variant_options(ctx: Context, variant_id: UUID) -> dict:
+    raw = await ctx.conn.fetchval(
+        "select options from product_variants where id = $1 and store_id = $2", variant_id, ctx.store_id)
+    return (json.loads(raw) if isinstance(raw, str) else raw) or {}
+
+
+async def _edit_order(ctx: Context, state: BotState, text: str, notes: list[str]) -> Outcome:
+    """Change the draft before confirming (2.6): the LLM names the operations, code applies them."""
+    try:
+        edits = await extract_edits(ctx.llm, text, [f"{_label(i)} × {i.quantity}" for i in state.items])
+    except LLMError:
+        return await _escalate(ctx, state, text, "llm_failure")
+
+    changed = False
+    removed: set[int] = set()
+    for op in edits.ops:
+        if op.op == "add_item":
+            if op.product_text:
+                state.queue.append(QueuedItem(product_text=op.product_text, color=op.color, size=clean_size(op.size),
+                                              quantity=max(1, op.quantity or 1)))
+                changed = True
+            continue
+        if op.line is None or not 1 <= op.line <= len(state.items) or op.line - 1 in removed:
+            continue  # a line that doesn't exist: ignore rather than guess
+        item = state.items[op.line - 1]
+        if op.op == "remove":
+            removed.add(op.line - 1)
+        elif op.op == "set_quantity" and op.quantity and op.quantity > 0:
+            item.quantity = op.quantity
+        elif op.op == "add_quantity" and op.quantity and op.quantity > 0:
+            item.quantity += op.quantity
+        elif op.op == "change_options" and (op.color or op.size):
+            # Same product, new variant: keep what didn't change, re-match (stock, price) like a new item.
+            current = await _variant_options(ctx, item.variant_id)
+            state.queue.append(QueuedItem(
+                product_text=item.product_name, color=op.color or current.get("color"),
+                size=clean_size(op.size) or current.get("size"), quantity=item.quantity, notes=item.notes))
+            removed.add(op.line - 1)
+        else:
+            continue
+        changed = True
+
+    if not changed:
+        listing = "\n".join(f"- {_label(i)} × {i.quantity}" for i in state.items)
+        return Outcome(_reply(f"{EDIT_UNCLEAR}\n{listing}"), state)
+    state.items = [i for n, i in enumerate(state.items) if n not in removed]
+    state.mode, state.pending, state.quoted_total = "collecting", None, None
+    if not state.items and not state.queue:
+        return Outcome(_reply("شلت كل شي من الطلب. إذا بدك تطلب إشي تاني أنا جاهز."), _reset())
     return await _advance(ctx, state, notes)
 
 
