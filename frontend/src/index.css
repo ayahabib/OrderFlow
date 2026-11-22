@@ -457,3 +457,20 @@ a.stat:hover { background: var(--surface-2); }
 @media (max-width: 1000px) { .charts-row { grid-template-columns: 1fr; } }
 details.table-view summary { cursor: pointer; color: var(--olive); font-size: 0.85rem; }
 details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y: auto; }
+
+/* --- stock page (3.2) --- */
+.stock-alerts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.alert-panel { border-inline-start: 4px solid var(--saffron); }
+.alert-panel.sold-out { border-inline-start-color: var(--danger); }
+.alert-panel h2 { margin: 0; }
+
+/* Ranked bars in HTML (BarList): name | thin bar | value. */
+.bar-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.bar-list li { display: grid; grid-template-columns: minmax(90px, 160px) minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.bar-track { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; min-width: 4px; background: var(--chart); border-radius: 999px; }
+.bar-value { font-size: 0.85rem; color: var(--muted); white-space: nowrap; min-width: 4.5em; }
+/* Stock alerts: the name takes the room, the two numbers stay compact. */
+.stock-table { table-layout: auto; }
+.stock-table th:nth-child(n+2), .stock-table td:nth-child(n+2) { width: 1%; white-space: nowrap; }

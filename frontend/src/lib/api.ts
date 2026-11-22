@@ -98,7 +98,7 @@ export type Product = {
 export const listProducts = () => api<Product[]>('/api/products')
 export const updateProductPrice = (id: string, price: string) =>
   api<Product>(`/api/products/${id}`, { method: 'PATCH', body: JSON.stringify({ price }) })
-export const updateVariant = (id: string, changes: { stock_quantity?: number; price_override?: string | null }) =>
+export const updateVariant = (id: string, changes: { stock_quantity?: number; price_override?: string | null; low_stock_threshold?: number }) =>
   api<Variant>(`/api/variants/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
 
 export type VariantInput = {
@@ -391,3 +391,18 @@ export type SalesReport = {
 }
 
 export const getSalesReport = (days: number) => api<SalesReport>(`/api/reports/sales?days=${days}`)
+
+// --- stock page (3.2) ---
+
+export type LowStockItem = {
+  variant_id: string
+  product_id: string
+  product_name: string
+  variant_name: string
+  stock_quantity: number
+  low_stock_threshold: number
+}
+export type ProductStock = { product_id: string; name: string; variants_count: number; total_stock: number }
+
+export const getLowStock = () => api<LowStockItem[]>('/api/reports/low-stock')
+export const getStockByProduct = () => api<ProductStock[]>('/api/reports/stock')

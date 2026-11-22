@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import BarList from '../components/BarList'
 import { getSalesReport, type SalesReport } from '../lib/api'
 
 const PERIODS = [7, 30, 90]
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const cur = report?.currency ?? ''
   const money = (v: string | number) => `${num.format(Number(v))} ${cur}`
   const chartDays = report?.days.map((d) => ({ ...d, value: Number(d.revenue) })) ?? []
-  const top = report?.top_products.map((p) => ({ ...p, value: p.quantity })) ?? []
+  const top = report?.top_products ?? []
 
   return (
     <section className="stack wide">
@@ -142,23 +143,10 @@ export default function DashboardPage() {
             <div className="card wide chart-panel">
               <h2>الأكثر طلباً (قطعة)</h2>
               {top.length === 0 ? <p className="muted small">بتظهر هون لما يصير في طلبات.</p> : (
-                <div className="chart-box" role="img" aria-label="المنتجات الأكثر طلباً حسب عدد القطع">
-                  <ResponsiveContainer>
-                    <BarChart data={top} layout="vertical" margin={{ top: 4, right: 4, left: 28, bottom: 4 }} barCategoryGap={6}>
-                      <XAxis type="number" reversed hide />
-                      <YAxis type="category" dataKey="product_name" orientation="right" width={110} tickLine={false}
-                        axisLine={false} tick={{ fill: 'var(--ink)', fontSize: 12 }} />
-                      <Tooltip cursor={{ fill: 'var(--olive-tint)' }} content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null
-                        const p = payload[0].payload as (typeof top)[number]
-                        return <div className="chart-tip"><strong>{p.product_name}</strong>{p.quantity} قطعة، {money(p.revenue)}</div>
-                      }} />
-                      <Bar dataKey="value" fill={color} radius={[4, 0, 0, 4]} maxBarSize={26} isAnimationActive={false}>
-                        <LabelList dataKey="quantity" position="left" fill="var(--muted)" fontSize={12} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <BarList ariaLabel="المنتجات الأكثر طلباً حسب عدد القطع" items={top.map((p) => ({
+                  key: p.product_name, label: p.product_name, value: p.quantity,
+                  valueLabel: `${p.quantity} قطعة`, title: money(p.revenue),
+                }))} />
               )}
             </div>
           </div>

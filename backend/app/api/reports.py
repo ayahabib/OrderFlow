@@ -102,3 +102,56 @@ async def sales_report(
         days=points,
         top_products=[TopProduct(**dict(r)) for r in top],
     )
+
+
+# --- stock (3.2) -----------------------------------------------------------------------
+
+class LowStockItem(BaseModel):
+    variant_id: UUID
+    product_id: UUID
+    product_name: str
+    variant_name: str
+    stock_quantity: int
+    low_stock_threshold: int
+
+
+class ProductStock(BaseModel):
+    product_id: UUID
+    name: str
+    variants_count: int
+    total_stock: int
+
+
+@router.get("/low-stock", response_model=list[LowStockItem])
+async def low_stock(
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> list[LowStockItem]:
+    """Sold out first, then the closest to running out."""
+    rows = await conn.fetch(
+        """
+        select variant_id, product_id, product_name, variant_name, stock_quantity, low_stock_threshold
+          from low_stock_variants
+         where store_id = $1
+         order by stock_quantity, product_name, variant_name
+        """,
+        store_id,
+    )
+    return [LowStockItem(**dict(r)) for r in rows]
+
+
+@router.get("/stock", response_model=list[ProductStock])
+async def stock_by_product(
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> list[ProductStock]:
+    rows = await conn.fetch(
+        """
+        select product_id, name, variants_count::int as variants_count, total_stock::int as total_stock
+          from product_stock
+         where store_id = $1
+         order by total_stock, name
+        """,
+        store_id,
+    )
+    return [ProductStock(**dict(r)) for r in rows]

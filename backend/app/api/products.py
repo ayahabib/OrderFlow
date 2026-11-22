@@ -77,6 +77,7 @@ class VariantUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     stock_quantity: Stock | None = None
     price_override: Money | None = None  # explicit null clears the override
+    low_stock_threshold: Annotated[int, Field(ge=0, le=100_000)] | None = None  # alert level (3.2)
 
 
 OptionText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)]
@@ -186,12 +187,16 @@ async def update_variant(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="ما في تعديل")
     if "stock_quantity" in fields and fields["stock_quantity"] is None:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="الكمية لازم تكون رقم")
+    if "low_stock_threshold" in fields and fields["low_stock_threshold"] is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="حد التنبيه لازم يكون رقم")
 
     kwargs = {}
     if "stock_quantity" in fields:
         kwargs["stock_quantity"] = fields["stock_quantity"]
     if "price_override" in fields:
         kwargs["price_override"] = fields["price_override"]
+    if "low_stock_threshold" in fields:
+        kwargs["low_stock_threshold"] = fields["low_stock_threshold"]
     if not await inventory.update_variant(conn, store_id, variant_id, **kwargs):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="النسخة غير موجودة")
     variant = await products_db.get_variant(conn, store_id, variant_id)

@@ -167,8 +167,9 @@ async def update_variant(
     *,
     stock_quantity: int | None = None,
     price_override=_UNSET,
+    low_stock_threshold: int | None = None,
 ) -> bool:
-    """Set a variant's stock and/or price override. Returns False if it isn't in this store.
+    """Set a variant's stock, price override and/or low-stock alert level. False if it isn't in this store.
 
     A stock change writes a 'manual' movement with change = new - old. The row is
     locked (FOR UPDATE) so a concurrent order can't change stock between the read
@@ -193,6 +194,12 @@ async def update_variant(
                 values ($1, $2, $3, 'manual')
                 """,
                 store_id, variant_id, stock_quantity - old_stock,
+            )
+
+        if low_stock_threshold is not None:  # 3.2: alert when stock <= this
+            await conn.execute(
+                "update product_variants set low_stock_threshold = $3, updated_at = now() where id = $1 and store_id = $2",
+                variant_id, store_id, low_stock_threshold,
             )
 
         if price_override is not _UNSET:

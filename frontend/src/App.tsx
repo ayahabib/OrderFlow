@@ -11,6 +11,7 @@ import ProductsPage from './pages/ProductsPage'
 import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/SettingsPage'
 import SimulatorPage from './pages/SimulatorPage'
+import StockPage from './pages/StockPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
 
 function Loading() {
@@ -41,6 +42,7 @@ function Dashboard() {
         <Route path="/conversations" element={<ConversationsPage />} />
         <Route path="/conversations/:id" element={<ConversationsPage />} />
         <Route path="/products" element={<ProductsPage />} />
+        <Route path="/stock" element={<StockPage />} />
         <Route path="/offers" element={<OffersPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/import" element={<Navigate to="/products" replace />} />

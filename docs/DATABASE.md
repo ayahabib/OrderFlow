@@ -477,6 +477,8 @@ select p.id as product_id, p.store_id, p.name,
 
 **التنفيذ (3.1، migration 0014):** `daily_sales` بيحسب اليوم بتوقيت المتجر (`created_at at time zone stores.timezone`) مش UTC، متل صفحة الطلبات. `GET /api/reports/sales?days=` بيعبّي الأيام الفاضية بصفر وبيرجّع أكتر 5 منتجات.
 
+**التنفيذ (3.2، migration 0015):** `low_stock_variants` (مع `product_id` زيادة) و `product_stock` (بس المنتجات المفعّلة، والـ join على `store_id` كمان). `low_stock_threshold` بيتعدّل من `PATCH /api/variants/{id}` وما بيسجّل حركة مخزون. صفحة "المخزون" وعدّاد بالقائمة.
+
 `security_invoker = true` عشان الـ view يحترم RLS (بدونه ممكن يعرض بيانات كل المتاجر). الخاصية متوفرة بنسخ PostgreSQL الحديثة، فتأكدي من نسخة Supabase عندك.
 
 ## 8. قرارات تصميم (للنقاش)

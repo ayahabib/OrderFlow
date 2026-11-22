@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { signOut, useAuth } from '../auth/AuthProvider'
-import { listConversations, listOrders } from '../lib/api'
+import { getLowStock, listConversations, listOrders } from '../lib/api'
 import { useStore } from '../store/StoreProvider'
 
 const COUNTS_MS = 30_000
 
 /** What is waiting for the owner right now: escalated chats and new orders. */
 function useWaitingCounts() {
-  const [counts, setCounts] = useState({ chats: 0, orders: 0 })
+  const [counts, setCounts] = useState({ chats: 0, orders: 0, lowStock: 0 })
   const location = useLocation()
 
   const load = useCallback(async () => {
     try {
-      const [chats, orders] = await Promise.all([listConversations('waiting', ''), listOrders({ status: 'new' })])
-      setCounts({ chats: chats.length, orders: orders.length })
+      const [chats, orders, low] = await Promise.all([
+        listConversations('waiting', ''), listOrders({ status: 'new' }), getLowStock(),
+      ])
+      setCounts({ chats: chats.length, orders: orders.length, lowStock: low.length })
     } catch {
       // Counts are a hint; the pages themselves show errors.
     }
@@ -71,6 +73,7 @@ export default function Layout() {
         <nav className="nav-group" aria-label="المتجر">
           <span>المتجر</span>
           <NavLink to="/products">المنتجات</NavLink>
+          <NavLink to="/stock">المخزون <Count n={counts.lowStock} label="منتج قرّب يخلص أو خلصان" /></NavLink>
           <NavLink to="/offers">العروض</NavLink>
           <NavLink to="/knowledge">معلومات المتجر</NavLink>
         </nav>
