@@ -67,7 +67,7 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 - Backend tests: `cd backend && uv run pytest`
 - Frontend: `cd frontend && npm install && npm run dev` (React + TypeScript + Vite)
 - Webhook tunnel (dev): `ngrok http 8000`, put the https URL in `PUBLIC_BASE_URL`, restart the backend, then (re)connect the Telegram bot in Settings
-- Eval: `cd backend && uv run python ../eval/run_eval.py` (extraction), `uv run python ../eval/run_escalation_eval.py --split all` (forced escalation; `--offline` = keywords only, no API)
+- Eval: `cd backend && uv run python ../eval/run_eval.py` (extraction), `uv run python ../eval/run_escalation_eval.py --split all` (forced escalation; `--offline` = keywords only, no API), `uv run python ../eval/run_kb_eval.py` (knowledge search with real embeddings)
 
 ## Testing and evaluation
 

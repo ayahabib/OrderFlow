@@ -329,3 +329,29 @@ export const getTelegramChannel = () => api<TelegramChannelStatus>('/api/channel
 export const connectTelegramChannel = (botToken: string) =>
   api<TelegramChannelStatus>('/api/channels/telegram', { method: 'POST', body: JSON.stringify({ bot_token: botToken }) })
 export const disconnectTelegramChannel = () => api<TelegramChannelStatus>('/api/channels/telegram', { method: 'DELETE' })
+
+// --- knowledge base (store info the bot answers from) ---
+
+export type KnowledgeEntry = {
+  id: string
+  question: string | null
+  answer: string
+  source: 'upload' | 'owner_answer' | 'manual'
+  is_active: boolean
+  created_at: string
+}
+export type KnowledgeHit = { id: string; question: string | null; answer: string; similarity: number }
+
+export const listKnowledge = () => api<KnowledgeEntry[]>('/api/knowledge')
+export const addKnowledge = (input: { question: string | null; answer: string }) =>
+  api<KnowledgeEntry>('/api/knowledge', { method: 'POST', body: JSON.stringify(input) })
+export const updateKnowledge = (id: string, changes: Partial<Pick<KnowledgeEntry, 'question' | 'answer' | 'is_active'>>) =>
+  api<KnowledgeEntry>(`/api/knowledge/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
+export const deleteKnowledge = (id: string) => api<null>(`/api/knowledge/${id}`, { method: 'DELETE' })
+export function uploadKnowledge(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return api<KnowledgeEntry[]>('/api/knowledge/upload', { method: 'POST', body: form })
+}
+export const searchKnowledge = (query: string) =>
+  api<KnowledgeHit[]>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query }) })

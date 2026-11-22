@@ -1,0 +1,207 @@
+{
+  "eval": "knowledge_search",
+  "model": "text-embedding-3-small",
+  "run_at": "2026-11-22_184406",
+  "top1": 0.8181818181818182,
+  "top3": 0.9090909090909091,
+  "details": [
+    {
+      "query": "لإيمتى فاتحين اليوم؟",
+      "expected": "hours",
+      "ranked": [
+        [
+          "hours",
+          0.395
+        ],
+        [
+          "delivery",
+          0.2
+        ],
+        [
+          "location",
+          0.167
+        ]
+      ]
+    },
+    {
+      "query": "الجمعة بتفتحوا؟",
+      "expected": "hours",
+      "ranked": [
+        [
+          "hours",
+          0.363
+        ],
+        [
+          "returns",
+          0.184
+        ],
+        [
+          "delivery",
+          0.178
+        ]
+      ]
+    },
+    {
+      "query": "امتى بتوصلني الطلبية؟",
+      "expected": "delivery",
+      "ranked": [
+        [
+          "delivery",
+          0.331
+        ],
+        [
+          "payment",
+          0.298
+        ],
+        [
+          "returns",
+          0.206
+        ]
+      ]
+    },
+    {
+      "query": "كم يوم بدها الشحنة توصل؟",
+      "expected": "delivery",
+      "ranked": [
+        [
+          "delivery",
+          0.529
+        ],
+        [
+          "payment",
+          0.349
+        ],
+        [
+          "hours",
+          0.338
+        ]
+      ]
+    },
+    {
+      "query": "اذا ما عجبني الفستان بقدر ارجعه؟",
+      "expected": "returns",
+      "ranked": [
+        [
+          "exchange",
+          0.243
+        ],
+        [
+          "returns",
+          0.186
+        ],
+        [
+          "payment",
+          0.117
+        ]
+      ]
+    },
+    {
+      "query": "بترجعولي مصاريي اذا رجعت القطعة؟",
+      "expected": "returns",
+      "ranked": [
+        [
+          "returns",
+          0.529
+        ],
+        [
+          "exchange",
+          0.306
+        ],
+        [
+          "delivery",
+          0.27
+        ]
+      ]
+    },
+    {
+      "query": "طلع المقاس صغير علي، شو بعمل؟",
+      "expected": "exchange",
+      "ranked": [
+        [
+          "exchange",
+          0.461
+        ],
+        [
+          "payment",
+          0.258
+        ],
+        [
+          "delivery",
+          0.254
+        ]
+      ]
+    },
+    {
+      "query": "بتقبلوا دفع كاش؟",
+      "expected": "payment",
+      "ranked": [
+        [
+          "payment",
+          0.63
+        ],
+        [
+          "delivery",
+          0.38
+        ],
+        [
+          "returns",
+          0.342
+        ]
+      ]
+    },
+    {
+      "query": "في عندكم تحويل بنكي؟",
+      "expected": "payment",
+      "ranked": [
+        [
+          "payment",
+          0.539
+        ],
+        [
+          "returns",
+          0.304
+        ],
+        [
+          "exchange",
+          0.26
+        ]
+      ]
+    },
+    {
+      "query": "وين موقعكم بالزبط؟",
+      "expected": "location",
+      "ranked": [
+        [
+          "location",
+          0.326
+        ],
+        [
+          "delivery",
+          0.199
+        ],
+        [
+          "payment",
+          0.183
+        ]
+      ]
+    },
+    {
+      "query": "بقدر اجي استلم من عندكم؟ وين انتو؟",
+      "expected": "location",
+      "ranked": [
+        [
+          "delivery",
+          0.339
+        ],
+        [
+          "returns",
+          0.288
+        ],
+        [
+          "payment",
+          0.283
+        ]
+      ]
+    }
+  ]
+}

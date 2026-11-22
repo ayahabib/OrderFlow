@@ -1,0 +1,24 @@
+{
+  "note": "Synthetic store info + customer questions worded differently from it (task 2.1). Each query names the entry it should find first.",
+  "entries": [
+    {"id": "hours", "question": "شو أوقات الدوام؟", "answer": "منفتح من الساعة 10 الصبح لحد 8 المسا، كل يوم ما عدا الجمعة."},
+    {"id": "delivery", "question": "قديش بياخد التوصيل؟", "answer": "التوصيل بيوصل خلال يوم أو يومين عمل من تأكيد الطلب."},
+    {"id": "returns", "question": "شو سياسة الإرجاع؟", "answer": "فيك ترجع القطعة خلال 3 أيام من الاستلام إذا ما انلبست ومعها الكرتونة."},
+    {"id": "exchange", "question": "بقدر أبدّل المقاس؟", "answer": "تبديل المقاس مجاني خلال أسبوع إذا القطعة بحالتها الأصلية."},
+    {"id": "payment", "question": "كيف بدفع؟", "answer": "الدفع كاش عند الاستلام، أو تحويل على تطبيق البنك قبل التوصيل."},
+    {"id": "location", "question": "وين المحل؟", "answer": "المحل بنابلس، شارع رفيديا، جنب صيدلية الشفاء."}
+  ],
+  "queries": [
+    {"query": "لإيمتى فاتحين اليوم؟", "expected": "hours"},
+    {"query": "الجمعة بتفتحوا؟", "expected": "hours"},
+    {"query": "امتى بتوصلني الطلبية؟", "expected": "delivery"},
+    {"query": "كم يوم بدها الشحنة توصل؟", "expected": "delivery"},
+    {"query": "اذا ما عجبني الفستان بقدر ارجعه؟", "expected": "returns"},
+    {"query": "بترجعولي مصاريي اذا رجعت القطعة؟", "expected": "returns"},
+    {"query": "طلع المقاس صغير علي، شو بعمل؟", "expected": "exchange"},
+    {"query": "بتقبلوا دفع كاش؟", "expected": "payment"},
+    {"query": "في عندكم تحويل بنكي؟", "expected": "payment"},
+    {"query": "وين موقعكم بالزبط؟", "expected": "location"},
+    {"query": "بقدر اجي استلم من عندكم؟ وين انتو؟", "expected": "location"}
+  ]
+}

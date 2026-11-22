@@ -17,6 +17,7 @@ from app.db.pool import get_db, get_db_factory
 from app.llm.client import get_llm
 from app.llm.schemas import MessageAnalysis
 from app.main import create_app
+from app.llm.embeddings import get_embedder
 from app.services.notifications import get_notifier
 
 TEST_URL = "https://test-project.supabase.co"
@@ -74,13 +75,15 @@ def analysis(**kw) -> MessageAnalysis:
     return MessageAnalysis(**{**base, **kw})
 
 
-def build_app(conn, settings: Settings | None = None, llm=None, notifier=None):
+def build_app(conn, settings: Settings | None = None, llm=None, notifier=None, embedder=None):
     app = create_app(use_lifespan=False)
     app.dependency_overrides[get_settings] = lambda: settings or test_settings()
     fake_llm = llm if llm is not None else ScriptedLLM()
     app.dependency_overrides[get_llm] = lambda: fake_llm
     # No real Telegram in tests: None (alerts off) unless a FakeNotifier is passed.
     app.dependency_overrides[get_notifier] = lambda: notifier
+    fake_embedder = embedder if embedder is not None else FakeEmbedder()
+    app.dependency_overrides[get_embedder] = lambda: fake_embedder
 
     async def override_db():
         yield conn
@@ -102,8 +105,39 @@ def build_app(conn, settings: Settings | None = None, llm=None, notifier=None):
     return app
 
 
-def client_for(conn, settings: Settings | None = None, llm=None, notifier=None) -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=build_app(conn, settings, llm, notifier)), base_url="http://test")
+def client_for(conn, settings: Settings | None = None, llm=None, notifier=None, embedder=None) -> httpx.AsyncClient:
+    app = build_app(conn, settings, llm, notifier, embedder)
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+
+class FakeEmbedder:
+    """Deterministic stand-in for OpenAI embeddings: hashed character trigrams of normalized
+    Arabic, so texts sharing words land close together. Never calls OpenAI.
+    """
+
+    def __init__(self, fail: bool = False):
+        self.fail = fail
+        self.calls: list[list[str]] = []
+
+    async def embed(self, texts: list[str]) -> list[list[float]]:
+        import hashlib
+        import math
+
+        from app.llm.client import LLMError
+        from app.utils.arabic import normalize_arabic
+        self.calls.append(texts)
+        if self.fail:
+            raise LLMError("timeout", "embedding failed (timeout)")
+        out = []
+        for text in texts:
+            vec = [0.0] * 768
+            for word in normalize_arabic(text).split():
+                word = f" {word} "
+                for i in range(len(word) - 2):
+                    vec[int(hashlib.md5(word[i:i + 3].encode()).hexdigest(), 16) % 768] += 1.0
+            norm = math.sqrt(sum(x * x for x in vec)) or 1.0
+            out.append([x / norm for x in vec])
+        return out
 
 
 class FakeNotifier:

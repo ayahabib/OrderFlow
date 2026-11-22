@@ -10,6 +10,7 @@
 | `sample_store.json` | مناطق التوصيل وأجرتها + معلومات الـ Knowledge Base (دوام، توصيل) |
 | `extraction_testset.jsonl` | 40 رسالة: النية + الاستخراج + المطابقة + فحص المخزون |
 | `escalation_testset.jsonl` | 32 رسالة: لازم تتحول لصاحب المتجر أو لا |
+| `knowledge_testset.json` | 6 معلومات متجر + 11 سؤال بصياغة مختلفة (2.1): `run_kb_eval.py` بيقيس إذا البحث بيلاقي المعلومة الصح |
 
 ## الـ aliases بملف المخزون
 

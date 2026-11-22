@@ -229,6 +229,10 @@ class ChannelAdapter(Protocol):
 
 أنواع المعلومات بالـ Knowledge Base: سياسة التوصيل، أوقات الدوام، سياسة الإرجاع، أي جواب محفوظ من صاحب المتجر.
 
+**الـ Knowledge Base (2.1):** `llm/embeddings.py` (`dimensions=768`، إعادة مرة وحدة) + `services/knowledge.py` + `api/knowledge.py` (`GET/POST/PATCH/DELETE /api/knowledge`، `POST /api/knowledge/upload` لملف .txt: كل فقرة = معلومة، `POST /api/knowledge/search` لتجربة صاحب المتجر).
+- الـ embedding من السؤال (اختياري) + الجواب مع بعض، وبيتعاد بس لما النص يتغيّر. إذا فشل الـ embedding ما بينحفظ شي.
+- قياس بـ `eval/run_kb_eval.py` (embeddings حقيقية): الصح أول 82%، بأول 3 نتائج 91%. الـ similarity للصح بين 0.33 و 0.63 تقريباً، فعتبة 2.2 لازم تكون منخفضة (حوالي 0.3) ونعطي الـ LLM أول 3 نتائج.
+
 ## 7. التحويل لصاحب المتجر والتعلم
 
 ### التحويل
