@@ -188,7 +188,7 @@ async def conversation_messages(conn, store_id: UUID, conversation_id: UUID, lim
 async def conversation_escalations(conn, store_id: UUID, conversation_id: UUID) -> list[asyncpg.Record]:
     return await conn.fetch(
         """
-        select id, rule, question, status::text as status, created_at from escalations
+        select id, rule, question, status::text as status, owner_answer, save_to_kb, created_at from escalations
          where store_id = $1 and conversation_id = $2
          order by created_at desc
         """,

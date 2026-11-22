@@ -279,7 +279,15 @@ export type ConversationSummary = {
 }
 
 export type ConversationMessage = { id: string; sender: 'customer' | 'bot' | 'owner'; content: string; created_at: string }
-export type ConversationEscalation = { id: string; rule: string | null; question: string; status: string; created_at: string }
+export type ConversationEscalation = {
+  id: string
+  rule: string | null
+  question: string
+  status: string
+  owner_answer: string | null
+  save_to_kb: boolean | null
+  created_at: string
+}
 export type OrderDraft = {
   items: { product_name: string; variant_name: string; quantity: number }[]
   unresolved: number
@@ -355,3 +363,8 @@ export function uploadKnowledge(file: File) {
 }
 export const searchKnowledge = (query: string) =>
   api<KnowledgeHit[]>('/api/knowledge/search', { method: 'POST', body: JSON.stringify({ query }) })
+
+// --- escalated questions (2.3) ---
+
+export const answerEscalation = (id: string, input: { answer: string; save_to_kb: boolean; then: 'bot' | 'owner' }) =>
+  api<ConversationDetail>(`/api/escalations/${id}/answer`, { method: 'POST', body: JSON.stringify(input) })

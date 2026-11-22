@@ -427,3 +427,11 @@ ul.items { margin: 0; padding-inline-start: 16px; white-space: normal; min-width
 .kb-search { padding: 0; border: 0; background: none; }
 .kb-hits { margin: 10px 0 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 8px; }
 .import-panel { gap: 12px; }
+
+/* Answering an escalated question (2.3): the one panel that waits on the owner, so saffron-edged. */
+.answer-box { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--surface); border: 1px solid var(--rule); border-inline-start: 4px solid var(--saffron); border-radius: var(--r-panel); }
+.answer-q { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.answer-q p { font-size: 1.05rem; font-weight: 600; }
+.answer-box .inline-label input { width: auto; padding: 0; }
+button.secondary { background: var(--surface); color: var(--olive); }
+button.secondary:hover:not(:disabled) { background: var(--olive-tint); color: var(--olive-strong); }

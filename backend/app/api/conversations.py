@@ -13,7 +13,6 @@ conversation row like the engine does, so they never interleave with a bot reply
 """
 
 import json
-import logging
 from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
@@ -23,14 +22,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.auth import get_current_store_id
-from app.channels.base import OutboundMessage
 from app.channels.registry import adapter_for
 from app.config import Settings, get_settings
 from app.db import conversations as db
 from app.db.pool import get_db
 from app.engine.order_flow import BotState
+from app.services import owner_messages
 
-log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
@@ -40,6 +38,7 @@ Mode = Literal["bot", "paused", "waiting_owner", "owner", "closed"]
 
 NOT_FOUND = "المحادثة مش موجودة"
 CLOSED = "المحادثة مسكّرة"
+CHANNEL_UNAVAILABLE = "هالقناة لسا مش مربوطة للرد من الداشبورد."
 
 
 def _mode(status_: str, bot_paused: bool) -> Mode:
@@ -74,6 +73,8 @@ class EscalationOut(BaseModel):
     rule: str | None
     question: str
     status: str
+    owner_answer: str | None = None
+    save_to_kb: bool | None = None
     created_at: datetime
 
 
@@ -219,19 +220,14 @@ async def owner_reply(
 ) -> ConversationDetail:
     async with conn.transaction():
         row = await _locked(conn, store_id, conversation_id)
-        adapter = await adapter_for(conn, settings, store_id, row["channel"])
-        if adapter is None:
-            raise HTTPException(status.HTTP_409_CONFLICT, detail="هالقناة لسا مش مربوطة للرد من الداشبورد.")
-        await db.insert_message(conn, store_id, conversation_id, "owner", body.text, {})
+        try:
+            adapter = await owner_messages.store(conn, settings, store_id, row, body.text)
+        except owner_messages.ChannelUnavailable:
+            raise HTTPException(status.HTTP_409_CONFLICT, detail=CHANNEL_UNAVAILABLE) from None
         # The owner is handling it now: the bot stays quiet until "resume".
         await conn.execute(
             "update conversations set status = 'owner' where id = $1 and store_id = $2 and status in ('bot', 'waiting_owner')",
             conversation_id, store_id,
         )
-        await db.touch_conversation(conn, store_id, conversation_id)
-    try:
-        await adapter.send(row["external_id"], OutboundMessage(text=body.text))
-    except Exception:
-        # Stored and visible in the history; delivery problems are logged without the text.
-        log.exception("owner reply not delivered (channel=%s, conversation=%s)", row["channel"], conversation_id)
+    await owner_messages.deliver(adapter, row, body.text)
     return await _detail(conn, settings, store_id, conversation_id)

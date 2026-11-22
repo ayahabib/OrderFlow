@@ -256,6 +256,7 @@ class ChannelAdapter(Protocol):
 2. الجواب بيتبعت للعميل عبر نفس القناة (`messages.sender = 'owner'`).
 3. لو `save_to_kb = true`: نعمل embedding للسؤال والجواب ونضيفهم لـ `knowledge_base` (`source = 'owner_answer'`)، ويفضل صاحب المتجر يقدر يعدّل صياغة السؤال/الجواب قبل الحفظ.
 4. `escalation.status = 'answered'`، وبترجع المحادثة `bot` (أو بتضل `owner` حسب اختيار صاحب المتجر).
+5. **التنفيذ (2.3):** `POST /api/escalations/{id}/answer {answer, save_to_kb, then}`، وصندوق الجواب جوا صفحة المحادثات. `save_to_kb` إجباري بكل جواب (زرين: "أرسل كجواب خاص" / "أرسل واحفظه للبوت"). `then = bot` بيرجّع البوت بس إذا ما ضل أسئلة مفتوحة بنفس المحادثة. الإرسال من `services/owner_messages.py` (نفس الرد العادي): بيتخزن داخل الـ transaction وبينبعت بعد الـ commit. الإضافة الفعلية للـ KB بـ 2.4.
 
 ### الإيقاف اليدوي (1.12)
 - زر "أوقف البوت" بالمحادثة بيحط `bot_paused = true`.

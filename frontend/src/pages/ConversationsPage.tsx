@@ -1,12 +1,14 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
+  answerEscalation,
   getConversation,
   listConversations,
   pauseConversation,
   replyToConversation,
   resumeConversation,
   type ConversationDetail,
+  type ConversationEscalation,
   type ConversationMode,
   type ConversationSummary,
   type ConversationView,
@@ -216,11 +218,9 @@ function ConversationPanel({ id, onChanged }: { id: string; onChanged: () => voi
         )}
       </div>
 
-      {open.length > 0 && (
-        <div className="msg warn-msg">
-          <strong>تحويل مفتوح: </strong>
-          {open.map((e) => `${RULE[e.rule ?? ''] ?? 'تحويل'} («${e.question}»)`).join('، ')}
-        </div>
+      {open.length > 0 && conv.can_reply && (
+        <AnswerBox escalation={open[0]} others={open.length - 1} busy={busy}
+          onAnswer={(input) => act(() => answerEscalation(open[0].id, input))} />
       )}
 
       {conv.draft && (
@@ -275,6 +275,49 @@ function ConversationPanel({ id, onChanged }: { id: string; onChanged: () => voi
           </p>
         )}
       </div>
+    </div>
+  )
+}
+
+/** Answer the question the bot handed over. Saving for the bot is always an explicit choice (hard rule 8). */
+function AnswerBox({ escalation, others, busy, onAnswer }: {
+  escalation: ConversationEscalation
+  others: number
+  busy: boolean
+  onAnswer: (input: { answer: string; save_to_kb: boolean; then: 'bot' | 'owner' }) => Promise<void>
+}) {
+  const [answer, setAnswer] = useState('')
+  const [botAfter, setBotAfter] = useState(true)
+
+  async function send(saveToKb: boolean) {
+    const text = answer.trim()
+    if (!text) return
+    await onAnswer({ answer: text, save_to_kb: saveToKb, then: botAfter ? 'bot' : 'owner' })
+    setAnswer('')
+  }
+
+  return (
+    <div className="answer-box">
+      <div className="answer-q">
+        <span className="badge danger">{RULE[escalation.rule ?? ''] ?? 'سؤال محوّل'}</span>
+        <p>«{escalation.question}»</p>
+        {others > 0 && <span className="muted small">وفي كمان {others} بانتظارك بعده</span>}
+      </div>
+      <textarea rows={2} maxLength={2000} value={answer} onChange={(e) => setAnswer(e.target.value)}
+        placeholder="اكتب جوابك للعميل" aria-label="جوابك على السؤال" />
+      <label className="inline-label small">
+        <input type="checkbox" checked={botAfter} onChange={(e) => setBotAfter(e.target.checked)} />
+        رجّع البوت يكمل المحادثة بعد الجواب
+      </label>
+      <div className="row-actions">
+        <button type="button" disabled={busy || !answer.trim()} onClick={() => send(false)}>أرسل كجواب خاص</button>
+        <button type="button" className="secondary" disabled={busy || !answer.trim()} onClick={() => send(true)}>
+          أرسل واحفظه للبوت
+        </button>
+      </div>
+      <p className="muted small">
+        الجواب الخاص بيوصل لهالعميل بس. "احفظه للبوت" يعني البوت بيقدر يجاوب نفس السؤال لحاله المرات الجاية.
+      </p>
     </div>
   )
 }
