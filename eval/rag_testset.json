@@ -1,0 +1,23 @@
+{
+  "note": "Task 2.2 RAG eval. Uses the store info in knowledge_testset.json. 'answerable' questions must be answered and the answer must contain one alternative from each inner list of must_include. 'unanswerable' ones must be handed to the owner. Synthetic data.",
+  "answerable": [
+    {"id": "rag-01", "question": "لإيمتى فاتحين اليوم؟", "must_include": [["8"]]},
+    {"id": "rag-02", "question": "بتفتحوا يوم الجمعة؟", "must_include": [["الجمعة", "الجمعه"]]},
+    {"id": "rag-03", "question": "امتى بتوصلني الطلبية؟", "must_include": [["يوم", "يومين"]]},
+    {"id": "rag-04", "question": "اذا ما عجبني الفستان بقدر ارجعه؟", "must_include": [["3", "تلات", "ثلاث"]]},
+    {"id": "rag-05", "question": "طلع المقاس صغير، بقدر ابدله؟", "must_include": [["أسبوع", "اسبوع", "مجاني"]]},
+    {"id": "rag-06", "question": "بتقبلوا دفع كاش؟", "must_include": [["كاش"]]},
+    {"id": "rag-07", "question": "في عندكم تحويل بنكي؟", "must_include": [["تحويل", "البنك"]]},
+    {"id": "rag-08", "question": "وين موقعكم بالزبط؟", "must_include": [["رفيديا", "نابلس"]]}
+  ],
+  "unanswerable": [
+    {"id": "rag-20", "question": "في ضمان ع الشنطة؟"},
+    {"id": "rag-21", "question": "بتعملوا تفصيل حسب المقاس؟"},
+    {"id": "rag-22", "question": "عندكم فرع بعمّان؟"},
+    {"id": "rag-23", "question": "بتقبلوا الدفع بالفيزا اونلاين؟"},
+    {"id": "rag-24", "question": "القماش قطن ولا بوليستر؟"},
+    {"id": "rag-25", "question": "بتفتحوا بالعيد؟"},
+    {"id": "rag-26", "question": "شو رقم واتساب المحل؟"},
+    {"id": "rag-27", "question": "بتغلفوا هدايا؟"}
+  ]
+}

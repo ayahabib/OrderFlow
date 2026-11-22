@@ -1,5 +1,6 @@
 """Find the delivery zone for an address, from the store's own zones only (hard rule 4: never invent a fee)."""
 
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
@@ -29,8 +30,12 @@ def _strip_article(word: str) -> str:
 
 def find_zone(text: str, zones: list[Zone]) -> Zone | None:
     """The zone whose name appears in the text ("نابلس، شارع فيصل" -> نابلس). Longest name wins."""
-    norm = normalize_arabic(text)
-    words = {_strip_article(w) for w in norm.replace(",", " ").replace("،", " ").split()}
+    # Punctuation off ("نابلس؟" / "نابلس." -> نابلس); normalize_arabic turns ، ؟ into , ?
+    norm = " ".join(re.sub(r"[^\w\s]", " ", normalize_arabic(text)).split())
+    words = {_strip_article(w) for w in norm.split()}
+    # Attached prepositions: "لرام الله" -> رام, "للخليل" -> خليل, "بنابلس" -> نابلس
+    words |= {_strip_article(w[2:] if w.startswith("لل") else w[1:]) for w in norm.split()
+              if len(w) > 3 and w[0] in "لبو"}
     hits = []
     for zone in zones:
         name = normalize_arabic(zone.name)

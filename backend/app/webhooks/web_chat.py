@@ -24,6 +24,7 @@ from app.db import conversations as conv_db
 from app.db.pool import get_db, get_db_factory
 from app.engine import handler
 from app.llm.client import get_llm
+from app.llm.embeddings import get_embedder
 from app.services.notifications import get_notifier
 
 log = logging.getLogger(__name__)
@@ -91,11 +92,12 @@ async def start_session(
 
 async def _respond_in_background(
     db_factory, llm, notifier, dashboard_url: str, store_id: UUID, conversation_id: UUID, to: str, text: str,
+    embedder=None,
 ) -> None:
     try:
         async with db_factory() as conn:
             await handler.respond(conn, store_id, conversation_id, to, text, web.WebAdapter(), llm,
-                                  notifier=notifier, dashboard_url=dashboard_url)
+                                  notifier=notifier, dashboard_url=dashboard_url, embedder=embedder)
     except Exception:
         # The customer's message is already stored; a failed reply must not crash anything.
         log.exception("web chat reply failed (conversation=%s)", conversation_id)
@@ -112,6 +114,7 @@ async def post_message(
     db_factory=Depends(get_db_factory),
     llm=Depends(get_llm),
     notifier=Depends(get_notifier),
+    embedder=Depends(get_embedder),
 ) -> MessageAck:
     session_id = _session(settings, store_id, x_session_token)
     await _require_store(conn, store_id)
@@ -126,7 +129,7 @@ async def post_message(
         return MessageAck(status="duplicate")
     if result.bot_should_reply:
         background.add_task(_respond_in_background, db_factory, llm, notifier, settings.dashboard_url,
-                            store_id, result.conversation_id, session_id, body.text)
+                            store_id, result.conversation_id, session_id, body.text, embedder=embedder)
     return MessageAck(status="received")
 
 

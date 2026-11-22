@@ -92,7 +92,8 @@ def keyword_rule(text: str) -> Rule | None:
 def llm_rule(analysis: MessageAnalysis) -> Rule | None:
     """Escalation the LLM's reading implies: a sensitive reason, or a question with no order in it.
 
-    Questions go to the owner until store-data Q&A (RAG) exists in task 2.2 (hard rule 4).
+    Used by the escalation eval as "needs store data". Since task 2.2 the engine first tries
+    engine/qa.py and only hands over when the store data has no answer (hard rule 4).
     """
     if analysis.sensitive_reason:
         return analysis.sensitive_reason

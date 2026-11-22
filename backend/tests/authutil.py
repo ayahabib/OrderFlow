@@ -57,12 +57,20 @@ class ScriptedLLM:
     Unscripted texts come back as intent "other" with nothing extracted. Never calls OpenAI.
     """
 
-    def __init__(self, script: dict | None = None):
+    def __init__(self, script: dict | None = None, answers: dict | None = None):
         self.script = script or {}
+        self.answers = answers or {}   # question text -> answer for the QA call (2.2); missing = NOT_FOUND
         self.calls: list[dict] = []
 
     async def structured(self, *, system, user, schema, task):
         self.calls.append({"user": user, "task": task})
+        if task == "answer_question":
+            from app.llm.qa import QAAnswer
+            question = user.rsplit("Customer question:\n<<<\n", 1)[1].rsplit("\n>>>", 1)[0]
+            answer = self.answers.get(question)
+            if isinstance(answer, Exception):
+                raise answer
+            return QAAnswer(found=answer is not None, answer=answer)
         text = user.rsplit("Customer message:\n<<<\n", 1)[1].rsplit("\n>>>", 1)[0]
         result = self.script.get(text)
         if isinstance(result, Exception):

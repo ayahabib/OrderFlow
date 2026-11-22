@@ -20,6 +20,7 @@ from app.channels.base import ChannelAdapter, InboundMessage
 from app.db import conversations as db
 from app.engine import order_flow
 from app.llm.client import LLM
+from app.llm.embeddings import Embedder
 from app.services import notifications
 
 log = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ async def respond(
     conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID, to: str, text: str,
     adapter: ChannelAdapter, llm: LLM | None,
     notifier: notifications.Notifier | None = None, dashboard_url: str = "",
+    embedder: Embedder | None = None,
 ) -> None:
     """Background step: run the order flow, store the reply and the new state, deliver it.
 
@@ -86,7 +88,7 @@ async def respond(
             conn=conn, store_id=store_id, conversation_id=conversation_id, customer_id=row["customer_id"],
             llm=llm, currency=row["currency"],
             large_item_qty=row["large_order_item_qty"], large_total_qty=row["large_order_total_qty"],
-            large_amount=row["large_order_amount"], customer_phone=row["phone"],
+            large_amount=row["large_order_amount"], customer_phone=row["phone"], embedder=embedder,
         )
         outcome = await order_flow.handle(ctx, order_flow.BotState.load(raw_state), text)
         reply = outcome.reply

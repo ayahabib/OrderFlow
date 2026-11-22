@@ -5,8 +5,8 @@ One customer message -> `handle` -> (reply, new state). Order of work:
 1. Cheap deterministic steps first (buttons, and short answers to the bot's open question:
    a size/color from the offered list, a phone number, a zone name, yes/no).
 2. Otherwise one LLM call (intent + extraction), with the bot's last question as context.
-3. Hard-rule escalations: LLM failure, sensitive reason, general question, large order
-   (code), no delivery zones set up. An area outside the store's zones is declined, not escalated.
+3. Hard-rule escalations: LLM failure, sensitive reason, large order (code), no delivery
+   zones set up. Questions are answered from store data (engine/qa.py) or escalated. An area outside the store's zones is declined, not escalated.
 4. `_advance`: resolve queued items (matching), then address -> zone -> phone -> summary.
 
 The LLM never produces numbers: prices, fees and totals come from services/order_totals.py.
@@ -23,8 +23,9 @@ from pydantic import BaseModel, Field
 
 from app.channels.base import Button, OutboundMessage
 from app.llm.client import LLM, LLMError
+from app.llm.embeddings import Embedder
 from app.llm.extraction import analyze_message, clean_size
-from app.engine import rules
+from app.engine import qa, rules
 from app.services import delivery, escalation, order_totals, orders
 from app.services.product_matching import clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
@@ -102,6 +103,7 @@ class Context:
     large_total_qty: int
     large_amount: Decimal
     customer_phone: str | None = None
+    embedder: Embedder | None = None   # knowledge-base search for questions (2.2)
 
 
 @dataclass
@@ -260,9 +262,8 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
             return await _confirm(ctx, state, notes)
         if state.pending and state.pending.kind == "stock":
             return await _answer_stock(ctx, state, True, notes)
-    if rules.llm_rule(analysis) == "not_in_data":
-        # Answering from store data (RAG) is Phase 2; until then the owner answers (hard rule 5).
-        return await _escalate(ctx, state, text, "not_in_data")
+    if intent == "question":
+        return await _answer_question(ctx, state, text, analysis)
 
     changed = _apply_analysis(state, analysis, text)
     if state.pending and state.pending.kind == "zone":
@@ -280,6 +281,19 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
     if state.mode == "awaiting_confirmation":
         state.mode = "collecting"  # something changed after the summary: show a fresh one
     return await _advance(ctx, state, notes)
+
+
+async def _answer_question(ctx: Context, state: BotState, text: str, analysis) -> Outcome:
+    """Answer from store data (engine/qa.py) without touching the order, or hand over to the owner."""
+    reply, rule = await qa.answer(ctx, text, analysis.items)
+    if rule:
+        return await _escalate(ctx, state, text, rule)
+    # Keep an order in progress going: repeat what we were waiting for.
+    if state.pending:
+        return Outcome(_reply(f"{reply.text}\n\n{state.pending.question}", _pending_buttons(state.pending)), state)
+    if state.mode == "awaiting_confirmation":
+        return Outcome(_reply(f"{reply.text}\n\nطلبك جاهز، بدك أأكده؟", CONFIRM_BUTTONS), state)
+    return Outcome(reply, state)
 
 
 def _pending_buttons(pending: Pending) -> list[Button]:

@@ -22,6 +22,7 @@ from app.db import channels as channels_db
 from app.db.pool import get_db, get_db_factory
 from app.engine import handler
 from app.llm.client import get_llm
+from app.llm.embeddings import get_embedder
 from app.services.notifications import get_notifier
 from app.utils.crypto import CryptoError
 
@@ -33,11 +34,11 @@ OK = {"ok": True}  # any 2xx tells Telegram not to retry
 
 
 async def _respond_in_background(db_factory, llm, notifier, dashboard_url: str, adapter: tg.TelegramAdapter,
-                                 store_id: UUID, conversation_id: UUID, to: str, text: str) -> None:
+                                 store_id: UUID, conversation_id: UUID, to: str, text: str, embedder=None) -> None:
     try:
         async with db_factory() as conn:
             await handler.respond(conn, store_id, conversation_id, to, text, adapter, llm,
-                                  notifier=notifier, dashboard_url=dashboard_url)
+                                  notifier=notifier, dashboard_url=dashboard_url, embedder=embedder)
     except Exception:
         log.exception("telegram reply failed (conversation=%s)", conversation_id)
 
@@ -63,6 +64,7 @@ async def telegram_webhook(
     db_factory=Depends(get_db_factory),
     llm=Depends(get_llm),
     notifier=Depends(get_notifier),
+    embedder=Depends(get_embedder),
 ) -> dict:
     try:
         expected = tg.webhook_secret(settings, channel_id)
@@ -100,5 +102,5 @@ async def telegram_webhook(
     result = await handler.ingest(conn, msg)
     if result.bot_should_reply:
         background.add_task(_respond_in_background, db_factory, llm, notifier, settings.dashboard_url, adapter,
-                            channel["store_id"], result.conversation_id, parsed.chat_id, parsed.text)
+                            channel["store_id"], result.conversation_id, parsed.chat_id, parsed.text, embedder=embedder)
     return OK
