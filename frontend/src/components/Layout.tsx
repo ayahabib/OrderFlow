@@ -63,6 +63,7 @@ export default function Layout() {
 
         <nav className="nav-group" aria-label="اليوم">
           <span>اليوم</span>
+          <NavLink to="/dashboard">نظرة عامة</NavLink>
           <NavLink to="/conversations">المحادثات <Count n={counts.chats} label="محادثة بانتظار ردك" /></NavLink>
           <NavLink to="/orders">الطلبات <Count n={counts.orders} label="طلب جديد" /></NavLink>
         </nav>

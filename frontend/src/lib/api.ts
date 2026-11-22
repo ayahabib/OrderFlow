@@ -374,3 +374,20 @@ export const answerEscalation = (id: string, input: {
   kb_answer?: string
 }) =>
   api<ConversationDetail>(`/api/escalations/${id}/answer`, { method: 'POST', body: JSON.stringify(input) })
+
+// --- sales dashboard (3.1) ---
+
+export type SalesReport = {
+  currency: string
+  start: string
+  end: string
+  orders_count: number
+  revenue: string
+  average_order: string | null
+  new_orders: number
+  in_progress_orders: number
+  days: { day: string; orders_count: number; revenue: string }[]
+  top_products: { product_name: string; quantity: number; revenue: string }[]
+}
+
+export const getSalesReport = (days: number) => api<SalesReport>(`/api/reports/sales?days=${days}`)

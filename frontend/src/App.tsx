@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './auth/AuthProvider'
 import Layout from './components/Layout'
 import ConversationsPage from './pages/ConversationsPage'
 import CreateStorePage from './pages/CreateStorePage'
+import DashboardPage from './pages/DashboardPage'
 import KnowledgePage from './pages/KnowledgePage'
 import OffersPage from './pages/OffersPage'
 import OrdersPage from './pages/OrdersPage'
@@ -35,6 +36,7 @@ function Dashboard() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/conversations" element={<ConversationsPage />} />
         <Route path="/conversations/:id" element={<ConversationsPage />} />
@@ -44,7 +46,7 @@ function Dashboard() {
         <Route path="/import" element={<Navigate to="/products" replace />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="*" element={<Navigate to="/orders" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
   )

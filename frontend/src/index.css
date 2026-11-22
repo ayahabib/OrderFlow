@@ -23,6 +23,7 @@
   --sidebar: #1c3027;
   --sidebar-ink: #dfe8e2;
   --sidebar-muted: #93a89b;
+  --chart: #257a4a;   /* data marks: validated (dataviz validate_palette) vs #ffffff */
 
   /* legacy names used by components */
   --text: var(--ink);
@@ -73,6 +74,7 @@
     --sidebar: #0c120f;
     --sidebar-ink: #dfe8e2;
     --sidebar-muted: #7f9387;
+    --chart: #3fa86e;   /* validated vs the dark surface #18211c */
     --warn: #f2c66a;
   }
 }
@@ -436,3 +438,22 @@ ul.items { margin: 0; padding-inline-start: 16px; white-space: normal; min-width
 button.secondary { background: var(--surface); color: var(--olive); }
 button.secondary:hover:not(:disabled) { background: var(--olive-tint); color: var(--olive-strong); }
 .learn-step { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--olive-tint); border-radius: var(--r-control); }
+
+/* --- overview / sales dashboard (3.1) --- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-panel); }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; color: inherit; text-decoration: none; }
+.stat + .stat { border-inline-start: 1px solid var(--rule); }
+.stat .value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+.stat .label { font-size: 0.85rem; color: var(--muted); }
+a.stat.needs-you { background: var(--saffron-tint); }
+a.stat.needs-you .value { color: var(--warn); }
+a.stat:hover { background: var(--surface-2); }
+.chart-panel { display: flex; flex-direction: column; gap: 10px; }
+.chart-panel h2 { margin: 0; }
+.chart-box { width: 100%; height: 280px; direction: ltr; }   /* SVG text placement; axis order set in code */
+.chart-tip { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-control); padding: 8px 10px; font-size: 0.85rem; direction: rtl; text-align: start; }
+.chart-tip strong { display: block; }
+.charts-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 1000px) { .charts-row { grid-template-columns: 1fr; } }
+details.table-view summary { cursor: pointer; color: var(--olive); font-size: 0.85rem; }
+details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y: auto; }
