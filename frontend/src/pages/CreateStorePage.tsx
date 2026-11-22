@@ -17,7 +17,7 @@ export default function CreateStorePage() {
 
   if (!created) {
     return (
-      <main className="auth-page">
+      <main className="auth-page single">
         <div className="stack">
           <p className="muted small">خطوة 1 من 2</p>
           <h1>أهلاً! خلّينا ننشئ متجرك</h1>
@@ -34,7 +34,7 @@ export default function CreateStorePage() {
   }
 
   return (
-    <main className="auth-page">
+    <main className="auth-page single">
       <div className="stack onboarding-wide">
         <p className="muted small">خطوة 2 من 2</p>
         <h1>وين بتوصّلوا؟</h1>

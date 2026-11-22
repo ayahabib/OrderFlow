@@ -4,8 +4,8 @@ import { useStore } from '../store/StoreProvider'
 
 const MAX_BYTES = 2 * 1024 * 1024
 
-/** Upload an Excel/CSV file, review what will change, then confirm. */
-export default function ImportPage() {
+/** Upload an Excel/CSV file, review what will change, then confirm. Lives on the products page. */
+export default function ImportPanel({ onImported, onClose }: { onImported: () => void; onClose: () => void }) {
   const { store } = useStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -41,6 +41,7 @@ export default function ImportPage() {
     setError(null)
     try {
       setResult(await confirmImport(file))
+      onImported()  // the products table below refreshes
       setPreview(null)
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
@@ -52,21 +53,27 @@ export default function ImportPage() {
   }
 
   return (
-    <section className="stack wide">
-      <h1>رفع المخزون</h1>
+    <section className="card wide import-panel" aria-label="رفع من Excel">
+      <div className="row">
+        <h2 className="no-margin">رفع المخزون من ملف</h2>
+        <span className="spacer" />
+        <button type="button" className="link" onClick={onClose}>إغلاق</button>
+      </div>
 
-      <form className="card wide" onSubmit={runPreview}>
-        <p className="muted">
+      <form className="stack wide" onSubmit={runPreview}>
+        <p className="muted small">
           ملف Excel (.xlsx) أو CSV. الأعمدة المطلوبة: <code>product_name</code>، <code>price</code>،{' '}
           <code>quantity</code>. اختياري: <code>color</code>، <code>size</code>، <code>variant_price</code>،{' '}
           <code>sku</code>، <code>category</code>، <code>description</code>، <code>aliases</code> (مفصولة بـ |).
           الصفوف الي إلها نفس اسم المنتج بتصير ألوان/مقاسات لنفس المنتج.
         </p>
-        <input ref={inputRef} type="file" accept=".xlsx,.csv"
-          onChange={(e) => choose(e.target.files?.[0] ?? null)} />
-        <button type="submit" disabled={!file || busy || (file?.size ?? 0) > MAX_BYTES}>
-          {busy && !preview ? '...' : 'معاينة'}
-        </button>
+        <div className="row">
+          <input ref={inputRef} type="file" accept=".xlsx,.csv"
+            onChange={(e) => choose(e.target.files?.[0] ?? null)} />
+          <button type="submit" disabled={!file || busy || (file?.size ?? 0) > MAX_BYTES}>
+            {busy && !preview ? '...' : 'معاينة'}
+          </button>
+        </div>
       </form>
 
       {error && <p className="msg error" role="alert">{error}</p>}

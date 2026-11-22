@@ -1,8 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import Layout from './components/Layout'
+import ConversationsPage from './pages/ConversationsPage'
 import CreateStorePage from './pages/CreateStorePage'
-import ImportPage from './pages/ImportPage'
+import KnowledgePage from './pages/KnowledgePage'
 import OffersPage from './pages/OffersPage'
 import OrdersPage from './pages/OrdersPage'
 import ProductsPage from './pages/ProductsPage'
@@ -12,7 +13,7 @@ import SimulatorPage from './pages/SimulatorPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
 
 function Loading() {
-  return <main className="auth-page"><p className="muted">جاري التحميل...</p></main>
+  return <main className="auth-page single"><p className="muted">جاري التحميل...</p></main>
 }
 
 /** Logged in: create the store first if there is none, otherwise show the dashboard. */
@@ -21,7 +22,7 @@ function Dashboard() {
   if (loading) return <Loading />
   if (error) {
     return (
-      <main className="auth-page">
+      <main className="auth-page single">
         <div className="stack">
           <p className="msg error" role="alert">{error}</p>
           <button type="button" onClick={reload}>إعادة المحاولة</button>
@@ -35,9 +36,12 @@ function Dashboard() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/conversations" element={<ConversationsPage />} />
+        <Route path="/conversations/:id" element={<ConversationsPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/offers" element={<OffersPage />} />
-        <Route path="/import" element={<ImportPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/import" element={<Navigate to="/products" replace />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/orders" replace />} />

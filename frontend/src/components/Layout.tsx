@@ -1,31 +1,95 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { signOut, useAuth } from '../auth/AuthProvider'
+import { listConversations, listOrders } from '../lib/api'
 import { useStore } from '../store/StoreProvider'
 
-/** Dashboard frame: top bar with store name, nav, and sign-out. */
+const COUNTS_MS = 30_000
+
+/** What is waiting for the owner right now: escalated chats and new orders. */
+function useWaitingCounts() {
+  const [counts, setCounts] = useState({ chats: 0, orders: 0 })
+  const location = useLocation()
+
+  const load = useCallback(async () => {
+    try {
+      const [chats, orders] = await Promise.all([listConversations('waiting', ''), listOrders({ status: 'new' })])
+      setCounts({ chats: chats.length, orders: orders.length })
+    } catch {
+      // Counts are a hint; the pages themselves show errors.
+    }
+  }, [])
+
+  useEffect(() => {
+    load()
+    const timer = window.setInterval(load, COUNTS_MS)
+    return () => window.clearInterval(timer)
+  }, [load, location.pathname])  // refresh after moving between pages, e.g. after answering a chat
+
+  return counts
+}
+
+function Count({ n, label }: { n: number; label: string }) {
+  if (n <= 0) return null
+  return <span className="count" aria-label={`${n} ${label}`}>{n}</span>
+}
+
+/** Dashboard frame: sidebar grouped by job, with counts of what needs the owner. */
 export default function Layout() {
   const { store } = useStore()
   const { session } = useAuth()
+  const counts = useWaitingCounts()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => setMenuOpen(false), [location.pathname])  // close the phone menu after navigating
+
+  const waiting = counts.chats + counts.orders
 
   return (
-    <>
-      <header className="topbar">
+    <div className={`app ${menuOpen ? 'menu-open' : ''}`}>
+      <header className="mobilebar">
+        <button type="button" onClick={() => setMenuOpen(true)} aria-expanded={menuOpen} aria-controls="sidebar">القائمة</button>
         <strong>{store?.name}</strong>
-        <nav>
-          <NavLink to="/orders">الطلبات</NavLink>
+        <span className="spacer" />
+        <Count n={waiting} label="بانتظارك" />
+      </header>
+
+      <aside className="sidebar" id="sidebar">
+        <div className="brand">
+          {store?.name}
+          <small>لوحة المتجر</small>
+        </div>
+
+        <nav className="nav-group" aria-label="اليوم">
+          <span>اليوم</span>
+          <NavLink to="/conversations">المحادثات <Count n={counts.chats} label="محادثة بانتظار ردك" /></NavLink>
+          <NavLink to="/orders">الطلبات <Count n={counts.orders} label="طلب جديد" /></NavLink>
+        </nav>
+
+        <nav className="nav-group" aria-label="المتجر">
+          <span>المتجر</span>
           <NavLink to="/products">المنتجات</NavLink>
           <NavLink to="/offers">العروض</NavLink>
-          <NavLink to="/import">رفع المخزون</NavLink>
+          <NavLink to="/knowledge">معلومات المتجر</NavLink>
+        </nav>
+
+        <nav className="nav-group" aria-label="تجربة">
+          <span>تجربة</span>
           <NavLink to="/simulator">محاكي الشات</NavLink>
           <NavLink to="/settings">الإعدادات</NavLink>
         </nav>
-        <span className="spacer" />
-        <span className="muted" dir="ltr">{session?.user.email}</span>
-        <button type="button" className="link" onClick={signOut}>خروج</button>
-      </header>
+
+        <div className="sidebar-foot">
+          <span dir="ltr">{session?.user.email}</span>
+          <button type="button" className="link" onClick={signOut}>تسجيل الخروج</button>
+        </div>
+      </aside>
+      <div className="scrim" onClick={() => setMenuOpen(false)} />
+
       <main className="shell">
         <Outlet />
       </main>
-    </>
+    </div>
   )
 }

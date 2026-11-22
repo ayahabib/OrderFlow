@@ -45,6 +45,17 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
+      <section className="auth-side" aria-hidden="true">
+        <div className="chat-sample">
+          <span className="c">بدي فستانين أحمر M، التوصيل ع نابلس</span>
+          <span className="b">تمام! المجموع 250 شيكل مع التوصيل. بأكّد الطلب؟</span>
+          <span className="c">في خصم إذا أخدت 3؟</span>
+          <span className="n">حوّلت السؤال إلك</span>
+        </div>
+        <h2>متجرك بيرد على الزباين وإنت مش فاضي</h2>
+        <p>البوت بياخد الطلبات من الشات، بيحسب المجموع من أسعارك، وبيحوّل إلك أي إشي ما بيعرفه.</p>
+      </section>
+      <div className="auth-main">
       <form className="card" onSubmit={submit}>
         <h1>{mode === 'login' ? 'تسجيل الدخول' : 'حساب جديد'}</h1>
 
@@ -72,6 +83,7 @@ export default function LoginPage() {
           {mode === 'login' ? 'ما عندك حساب؟ سجّل هون' : 'عندك حساب؟ سجّل دخول'}
         </button>
       </form>
+      </div>
     </main>
   )
 }

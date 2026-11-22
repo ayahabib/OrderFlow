@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import ImportPanel from '../components/ImportPanel'
 import EditableCell, { validatePrice, validateQuantity } from '../components/EditableCell'
 import { AddVariantForm, NewProductForm } from '../components/ProductForms'
 import {
@@ -29,9 +29,11 @@ export default function ProductsPage() {
   const [query, setQuery] = useState('')
   const [showNew, setShowNew] = useState(false)
   const [addingTo, setAddingTo] = useState<string | null>(null)
+  const [showImport, setShowImport] = useState(false)
 
+  const reload = () => listProducts().then(setProducts).catch((e) => setError((e as Error).message))
   useEffect(() => {
-    listProducts().then(setProducts).catch((e) => setError((e as Error).message))
+    reload()
   }, [])
 
   const visible = useMemo(() => {
@@ -103,14 +105,16 @@ export default function ProductsPage() {
           <input type="search" placeholder="بحث..." aria-label="بحث بالمنتجات"
             value={query} onChange={(e) => setQuery(e.target.value)} />
         )}
+        {!showImport && <button type="button" className="link" onClick={() => setShowImport(true)}>رفع من Excel</button>}
         {!showNew && <button type="button" onClick={() => setShowNew(true)}>+ منتج جديد</button>}
       </div>
 
+      {showImport && <ImportPanel onImported={reload} onClose={() => setShowImport(false)} />}
       {newForm}
       {actionError && <p className="msg error" role="alert">{actionError}</p>}
 
       {products.length === 0 ? (
-        !showNew && <p className="muted">ما في منتجات لسّا. أضف منتج، أو <Link to="/import">ارفع ملف المخزون</Link>.</p>
+        !showNew && <p className="muted">ما في منتجات لسّا. أضف منتج، أو <button type="button" className="link" onClick={() => setShowImport(true)}>ارفع ملف المخزون</button>.</p>
       ) : (
         <>
           <p className="muted small">عدّل الكمية أو السعر واضغط Enter. السعر الخاص فاضي = سعر المنتج الأساسي.</p>
