@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import StoreForm from '../components/StoreForm'
 import TelegramChannel from '../components/TelegramChannel'
 import TelegramLink from '../components/TelegramLink'
@@ -7,6 +9,13 @@ import { useStore } from '../store/StoreProvider'
 
 export default function SettingsPage() {
   const { store, setStore } = useStore()
+  const { hash } = useLocation()
+
+  // Links like /settings#zones (from a handed-over conversation) open at that section.
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [hash, store])
+
   if (!store) return null
 
   return (

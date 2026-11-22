@@ -435,3 +435,4 @@ ul.items { margin: 0; padding-inline-start: 16px; white-space: normal; min-width
 .answer-box .inline-label input { width: auto; padding: 0; }
 button.secondary { background: var(--surface); color: var(--olive); }
 button.secondary:hover:not(:disabled) { background: var(--olive-tint); color: var(--olive-strong); }
+.learn-step { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--olive-tint); border-radius: var(--r-control); }

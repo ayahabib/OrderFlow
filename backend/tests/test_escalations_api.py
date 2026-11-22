@@ -65,7 +65,7 @@ async def test_owner_keeps_the_chat_and_choice_is_required(db_tx):
         assert (await c.post(f"/api/escalations/{first}/answer", headers=h, json={"answer": "هلا"})).status_code == 422
 
         r = await c.post(f"/api/escalations/{first}/answer", headers=h,
-                         json={"answer": "هلا", "save_to_kb": True, "then": "bot"})
+                         json={"answer": "هلا", "save_to_kb": False, "then": "bot"})
         assert r.json()["mode"] == "owner"                                   # another question still open
         r = await c.post(f"/api/escalations/{second}/answer", headers=h,
                          json={"answer": "العروض موجودة بالصفحة", "save_to_kb": False, "then": "owner"})
@@ -73,7 +73,7 @@ async def test_owner_keeps_the_chat_and_choice_is_required(db_tx):
         assert (await chat.say("تمام"))["sender"] is None                   # owner kept it: bot quiet
     assert (await conversation(db_tx, store))["status"] == "owner"
     saved = await db_tx.fetch("select save_to_kb from escalations where store_id = $1 order by created_at", store)
-    assert [r["save_to_kb"] for r in saved] == [True, False]
+    assert [r["save_to_kb"] for r in saved] == [False, False]
 
 
 async def test_answer_reaches_telegram_customer(db_tx, telegram):  # noqa: F811

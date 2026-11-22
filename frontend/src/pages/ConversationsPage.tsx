@@ -279,22 +279,59 @@ function ConversationPanel({ id, onChanged }: { id: string; onChanged: () => voi
   )
 }
 
+// Questions the bot may learn to answer (2.4). Forced rules always go to the owner, so no "save".
+const LEARNABLE = new Set(['not_in_data', 'llm_failure'])
+
+// Why there is no "save for the bot" for this kind of question, in the owner's terms.
+const NOT_LEARNABLE_WHY: Record<string, string> = {
+  unknown_zone: 'البوت حوّلها لأن ما في مناطق توصيل مسجلة. ضيف المناطق وأجرتها، والبوت بيحسب التوصيل لحاله.',
+  complaint: 'الشكاوى بتوصلك إنت دايماً، البوت ما بيرد عليها لحاله.',
+  discount: 'طلبات الخصم والسعر الخاص قرارك إنت، فبتضل توصلك.',
+  large_order: 'الطلبيات الكبيرة بتوصلك إنت دايماً.',
+  allergy_ingredients: 'أسئلة الحساسية والمكونات بتوصلك دايماً، عشان البوت ما يعطي معلومة غلط.',
+  human_requested: 'العميل طلب يحكي معك إنت.',
+  order_status: 'سؤال عن طلب معيّن، جوابه خاص بهالعميل.',
+  return_request: 'طلبات الإرجاع والتبديل بتوصلك إنت دايماً.',
+}
+
+type AnswerInput = {
+  answer: string
+  save_to_kb: boolean
+  then: 'bot' | 'owner'
+  kb_question?: string
+  kb_answer?: string
+}
+
 /** Answer the question the bot handed over. Saving for the bot is always an explicit choice (hard rule 8). */
 function AnswerBox({ escalation, others, busy, onAnswer }: {
   escalation: ConversationEscalation
   others: number
   busy: boolean
-  onAnswer: (input: { answer: string; save_to_kb: boolean; then: 'bot' | 'owner' }) => Promise<void>
+  onAnswer: (input: AnswerInput) => Promise<void>
 }) {
   const [answer, setAnswer] = useState('')
   const [botAfter, setBotAfter] = useState(true)
+  // Second step of "save for the bot": the wording the bot will learn, editable.
+  const [saving, setSaving] = useState(false)
+  const [kbQuestion, setKbQuestion] = useState('')
+  const [kbAnswer, setKbAnswer] = useState('')
+  const learnable = LEARNABLE.has(escalation.rule ?? '')
 
-  async function send(saveToKb: boolean) {
-    const text = answer.trim()
-    if (!text) return
-    await onAnswer({ answer: text, save_to_kb: saveToKb, then: botAfter ? 'bot' : 'owner' })
+  async function send(input: AnswerInput) {
+    await onAnswer(input)
     setAnswer('')
+    setSaving(false)
   }
+
+  const then = botAfter ? 'bot' : 'owner'
+  const sendPrivate = () => send({ answer: answer.trim(), save_to_kb: false, then })
+  const startSaving = () => {
+    setKbQuestion(escalation.question)
+    setKbAnswer(answer.trim())
+    setSaving(true)
+  }
+  const sendAndSave = () =>
+    send({ answer: answer.trim(), save_to_kb: true, then, kb_question: kbQuestion.trim(), kb_answer: kbAnswer.trim() })
 
   return (
     <div className="answer-box">
@@ -303,20 +340,44 @@ function AnswerBox({ escalation, others, busy, onAnswer }: {
         <p>«{escalation.question}»</p>
         {others > 0 && <span className="muted small">وفي كمان {others} بانتظارك بعده</span>}
       </div>
-      <textarea rows={2} maxLength={2000} value={answer} onChange={(e) => setAnswer(e.target.value)}
+      <textarea rows={2} maxLength={2000} value={answer} onChange={(e) => { setAnswer(e.target.value); setSaving(false) }}
         placeholder="اكتب جوابك للعميل" aria-label="جوابك على السؤال" />
       <label className="inline-label small">
         <input type="checkbox" checked={botAfter} onChange={(e) => setBotAfter(e.target.checked)} />
         رجّع البوت يكمل المحادثة بعد الجواب
       </label>
-      <div className="row-actions">
-        <button type="button" disabled={busy || !answer.trim()} onClick={() => send(false)}>أرسل كجواب خاص</button>
-        <button type="button" className="secondary" disabled={busy || !answer.trim()} onClick={() => send(true)}>
-          أرسل واحفظه للبوت
-        </button>
-      </div>
+
+      {saving ? (
+        <div className="learn-step">
+          <p className="small">هيك رح يتعلّمها البوت. عدّل الصياغة لتصير عامة، مثلاً شيل اسم العميل أو تفاصيل طلبه.</p>
+          <label className="small">
+            السؤال
+            <input value={kbQuestion} maxLength={300} onChange={(e) => setKbQuestion(e.target.value)} />
+          </label>
+          <label className="small">
+            الجواب الي رح يعطيه البوت
+            <textarea rows={2} maxLength={2000} value={kbAnswer} onChange={(e) => setKbAnswer(e.target.value)} />
+          </label>
+          <div className="row-actions">
+            <button type="button" disabled={busy || !kbAnswer.trim()} onClick={sendAndSave}>أرسل للعميل واحفظ للبوت</button>
+            <button type="button" className="link" onClick={() => setSaving(false)}>رجوع</button>
+          </div>
+        </div>
+      ) : (
+        <div className="row-actions">
+          <button type="button" disabled={busy || !answer.trim()} onClick={sendPrivate}>أرسل كجواب خاص</button>
+          {learnable && (
+            <button type="button" className="secondary" disabled={busy || !answer.trim()} onClick={startSaving}>
+              أرسل واحفظه للبوت
+            </button>
+          )}
+        </div>
+      )}
       <p className="muted small">
-        الجواب الخاص بيوصل لهالعميل بس. "احفظه للبوت" يعني البوت بيقدر يجاوب نفس السؤال لحاله المرات الجاية.
+        {learnable
+          ? 'الجواب الخاص بيوصل لهالعميل بس. "احفظه للبوت" يعني البوت بيجاوب نفس السؤال لحاله المرات الجاية.'
+          : `جوابك بيوصل لهالعميل بس. ${NOT_LEARNABLE_WHY[escalation.rule ?? ''] ?? ''}`}
+        {escalation.rule === 'unknown_zone' && <> <Link to="/settings#zones">إضافة مناطق التوصيل</Link></>}
       </p>
     </div>
   )

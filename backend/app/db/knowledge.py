@@ -25,17 +25,19 @@ async def get_entry(conn: asyncpg.Connection, store_id: UUID, entry_id: UUID) ->
 
 
 async def insert_entries(conn: asyncpg.Connection, store_id: UUID, source: str,
-                         rows: list[tuple[str | None, str, list[float]]]) -> list[asyncpg.Record]:
-    """rows: (question, answer, embedding). One statement per row, inside the caller's transaction."""
+                         rows: list[tuple[str | None, str, list[float]]],
+                         escalation_id: UUID | None = None) -> list[asyncpg.Record]:
+    """rows: (question, answer, embedding). One statement per row, inside the caller's transaction.
+    escalation_id links an owner answer to the question it came from (task 2.4)."""
     out = []
     for question, answer, embedding in rows:
         out.append(await conn.fetchrow(
             f"""
-            insert into knowledge_base (store_id, question, answer, source, embedding)
-            values ($1, $2, $3, $4::kb_source, $5::vector)
+            insert into knowledge_base (store_id, question, answer, source, embedding, escalation_id)
+            values ($1, $2, $3, $4::kb_source, $5::vector, $6)
             returning {COLUMNS}
             """,
-            store_id, question, answer, source, vector_literal(embedding),
+            store_id, question, answer, source, vector_literal(embedding), escalation_id,
         ))
     return out
 

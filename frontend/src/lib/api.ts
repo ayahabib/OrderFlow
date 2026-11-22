@@ -366,5 +366,11 @@ export const searchKnowledge = (query: string) =>
 
 // --- escalated questions (2.3) ---
 
-export const answerEscalation = (id: string, input: { answer: string; save_to_kb: boolean; then: 'bot' | 'owner' }) =>
+export const answerEscalation = (id: string, input: {
+  answer: string
+  save_to_kb: boolean
+  then: 'bot' | 'owner'
+  kb_question?: string
+  kb_answer?: string
+}) =>
   api<ConversationDetail>(`/api/escalations/${id}/answer`, { method: 'POST', body: JSON.stringify(input) })
