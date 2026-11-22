@@ -23,7 +23,7 @@ const MODE: Record<ConversationMode, { label: string; cls: string }> = {
 const VIEWS: { value: ConversationView; label: string }[] = [
   { value: '', label: 'الكل' },
   { value: 'waiting', label: 'بانتظار ردك' },
-  { value: 'owner', label: 'إنت عم ترد / موقوف' },
+  { value: 'owner', label: 'إنت عم ترد' },
   { value: 'bot', label: 'البوت شغّال' },
   { value: 'closed', label: 'مسكّرة' },
 ]
@@ -85,41 +85,43 @@ export default function ConversationsPage() {
   }, [query])
 
   return (
-    <section className="stack wide">
-      <div className="row">
-        <h1>المحادثات</h1>
-        <span className="spacer" />
-        <button type="button" className="link" onClick={loadList}>تحديث</button>
-      </div>
-
+    <section className="stack wide conv-page">
       <div className="conversations">
         <div className={`conv-list ${id ? 'has-selection' : ''}`}>
-          <div className="filters">
-            <select value={view} onChange={(e) => setView(e.target.value as ConversationView)} aria-label="الحالة">
-              {VIEWS.map((v) => <option key={v.value} value={v.value}>{v.label}</option>)}
-            </select>
+          <div className="conv-list-head">
+            <div className="row">
+              <h1>المحادثات</h1>
+              <span className="spacer" />
+              <button type="button" className="link small" onClick={loadList}>تحديث</button>
+            </div>
+            <div className="tabs" role="tablist" aria-label="فلترة حسب الحالة">
+              {VIEWS.map((v) => (
+                <button key={v.value} type="button" role="tab" aria-selected={view === v.value}
+                  className={view === v.value ? 'active' : ''} onClick={() => setView(v.value)}>{v.label}</button>
+              ))}
+            </div>
             <input type="search" placeholder="بحث بالاسم، الرقم أو نص الرسالة" value={query}
               onChange={(e) => setQuery(e.target.value)} />
           </div>
           {error && <p className="msg error">{error}</p>}
-          {!list ? <p className="muted">جاري التحميل...</p> : list.length === 0 ? (
-            <p className="muted small">{view || q ? 'ما في محادثات بهالفلتر.' : 'ما في محادثات لسّا. جرّب من محاكي الشات.'}</p>
+          {!list ? <p className="muted conv-empty-list">جاري التحميل...</p> : list.length === 0 ? (
+            <p className="muted small conv-empty-list">{view || q ? 'ما في محادثات بهالفلتر.' : 'ما في محادثات لسّا. جرّب من محاكي الشات.'}</p>
           ) : (
             <ul className="conv-items">
               {list.map((c) => (
                 <li key={c.id}>
-                  <button type="button" className={`conv-item ${c.id === id ? 'active' : ''}`}
+                  <button type="button" className={`conv-item ${c.id === id ? 'active' : ''} ${c.mode === 'waiting_owner' ? 'waiting' : ''}`}
                     onClick={() => navigate(`/conversations/${c.id}`)}>
-                    <span className="row">
+                    <span className="conv-item-top">
                       <strong>{customerLabel(c)}</strong>
-                      <span className={`badge ${MODE[c.mode].cls}`}>{MODE[c.mode].label}</span>
-                      {c.open_escalations > 0 && <span className="badge danger">{c.open_escalations} تحويل</span>}
-                      <span className="spacer" />
-                      <span className="muted small">{fmt(c.last_message_at)}</span>
+                      <span className="muted small conv-time">{fmt(c.last_message_at)}</span>
                     </span>
                     <span className="muted small conv-preview">
                       {c.last_sender === 'bot' ? 'البوت: ' : c.last_sender === 'owner' ? 'إنت: ' : ''}{c.last_message ?? ''}
                     </span>
+                    {c.mode !== 'bot' && (  // the bot answering is the normal case: no chip
+                      <span className={`badge ${MODE[c.mode].cls}`}>{MODE[c.mode].label}</span>
+                    )}
                   </button>
                 </li>
               ))}
@@ -128,8 +130,12 @@ export default function ConversationsPage() {
         </div>
 
         <div className="conv-detail">
-          {id ? <ConversationPanel key={id} id={id} onChanged={loadList} />
-            : <p className="muted card center">اختار محادثة من القائمة.</p>}
+          {id ? <ConversationPanel key={id} id={id} onChanged={loadList} /> : (
+            <div className="conv-empty">
+              <p>اختار محادثة من القائمة</p>
+              <p className="muted small">المحادثات الي بانتظار ردك معلّمة بالأصفر.</p>
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -190,12 +196,17 @@ function ConversationPanel({ id, onChanged }: { id: string; onChanged: () => voi
   const open = conv.escalations.filter((e) => e.status === 'open')
 
   return (
-    <div className="stack wide">
-      <div className="row">
+    <div className="conv-panel">
+      <div className="row conv-head">
         <Link to="/conversations" className="small back-link">→ القائمة</Link>
-        <h2 className="no-margin">{customerLabel(conv)}</h2>
+        <div className="conv-who">
+          <h2 className="no-margin">{customerLabel(conv)}</h2>
+          <span className="muted small">
+            {conv.channel === 'web' ? 'محاكي الويب' : conv.channel === 'telegram' ? 'Telegram' : conv.channel}
+            {conv.customer_phone && conv.customer_name ? `، ${conv.customer_phone}` : ''}
+          </span>
+        </div>
         <span className={`badge ${MODE[conv.mode].cls}`}>{MODE[conv.mode].label}</span>
-        <span className="muted small">{conv.channel === 'web' ? 'محاكي الويب' : conv.channel}</span>
         <span className="spacer" />
         {botAnswering && (
           <button type="button" onClick={() => act(() => pauseConversation(id))} disabled={busy}>أوقف البوت</button>

@@ -347,34 +347,74 @@ ul.items { margin: 0; padding-inline-start: 16px; white-space: normal; min-width
 .chat-input input { flex: 1; min-width: 0; }
 .chat .msg { margin: 8px 12px 0; }
 
-/* --- conversations --- */
-.conversations { display: grid; grid-template-columns: minmax(260px, 330px) 1fr; gap: 20px; align-items: start; }
-.conv-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.conv-detail { min-width: 0; }
-.conv-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 72vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-panel); }
-.conv-items li + li { border-top: 1px solid var(--rule); }
+/* --- conversations: an inbox. List on the right, the open chat fills the rest, both full height. --- */
+.shell:has(.conv-page) { max-width: none; padding-block: 0; padding-inline: 0; }
+.conversations { display: grid; grid-template-columns: 360px minmax(0, 1fr); height: 100vh; }
+.conv-list { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border-inline-end: 1px solid var(--rule); }
+.conv-list-head { display: flex; flex-direction: column; gap: 12px; padding: 24px 18px 14px; border-bottom: 1px solid var(--rule); }
+.conv-list-head h1 { font-size: 1.6rem; }
+.conv-list > .msg { margin: 10px 18px 0; }
+.conv-empty-list { padding: 18px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tabs button {
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--rule);
+}
+.tabs button:hover:not(:disabled) { background: var(--surface-2); border-color: var(--rule); color: var(--ink); }
+.tabs button.active, .tabs button.active:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.conv-items { list-style: none; margin: 0; padding: 0; flex: 1; overflow-y: auto; }
+.conv-items li { border-bottom: 1px solid var(--rule); }
 .conv-item {
   width: 100%;
   text-align: start;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 11px 14px;
+  align-items: stretch;
+  gap: 4px;
+  padding: 13px 18px;
   background: transparent;
   color: inherit;
   border: none;
   border-radius: 0;
   font-weight: 400;
 }
+.conv-item .badge { align-self: flex-start; }
 .conv-item:hover:not(:disabled) { background: var(--surface-2); border-color: transparent; }
-.conv-item.active { background: var(--olive-tint); box-shadow: inset -3px 0 0 var(--olive); }
-.conv-item .row { gap: 6px; }
+.conv-item.waiting { box-shadow: inset -4px 0 0 var(--saffron); }
+.conv-item.active, .conv-item.active:hover:not(:disabled) { background: var(--olive-tint); box-shadow: inset -4px 0 0 var(--olive); }
+.conv-item-top { display: flex; align-items: baseline; gap: 10px; }
+.conv-item-top strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conv-time { flex-shrink: 0; font-size: 0.75rem; }
 .conv-preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.conv-detail { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 20px 28px; overflow-y: auto; }
+.conv-detail > .msg, .conv-detail > p.muted { margin: 20px 0; }
+.conv-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+.conv-empty p:first-child { font-size: 1.1rem; font-weight: 600; }
+.conv-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.conv-head { padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.conv-who { display: flex; flex-direction: column; }
+.conv-panel > .card { max-width: none; }
+.conv-panel > .chat { flex: 1; min-height: 280px; }
+.conv-panel > .chat .chat-log { flex: 1; height: auto; min-height: 0; }
 .draft-items { margin: 6px 0; padding-inline-start: 20px; }
 .back-link { display: none; }
+
+@media (max-width: 900px) {
+  .shell:has(.conv-page) { padding: 0; }
+  .conversations { height: calc(100vh - 52px); }  /* under the phone top bar */
+}
 @media (max-width: 760px) {
   .conversations { grid-template-columns: 1fr; }
+  .conv-list { border-inline-end: none; }
   .conv-list.has-selection { display: none; }
+  .conv-list:not(.has-selection) + .conv-detail { display: none; }
+  .conv-detail { padding: 14px 12px; }
   .back-link { display: inline; }
 }
 
