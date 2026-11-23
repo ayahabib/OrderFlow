@@ -1,0 +1,90 @@
+{
+  "note": "Task 3.7: synthetic 'archive' chats of the sample store (sample_inventory.csv, sample_store.json zones, knowledge_testset.json store info) as a staff member handled them. Each customer message is replayed through the real bot; the bot's turn passes when it takes the same action as the staff reply (`action`, or one of `any_of`) and its reply contains one alternative from each inner list of `include` and nothing from `exclude`. Actions: ask (asks for missing info), summary (order total, waiting for confirm), order_placed, answer, handoff (to the owner). When the staff broke a hard rule (gave a discount, invented a fee), the expected action follows the rule and `note` says why. Synthetic data only.",
+  "conversations": [
+    {"id": "arc-01", "tags": ["order", "step_by_step"], "turns": [
+      {"customer": "مرحبا بدي فستان صيفي احمر مقاس M", "staff": "أهلين! الفستان الأحمر M متوفر بـ 120 شيكل. لوين التوصيل؟", "action": "ask"},
+      {"customer": "نابلس، شارع رفيديا", "staff": "تمام، ابعتلي رقم تلفونك لو سمحت", "action": "ask"},
+      {"customer": "0599111222", "staff": "طلبك: فستان صيفي أحمر M بـ 120 + توصيل نابلس 10 = 130 شيكل. بأكدلك؟", "action": "summary", "include": [["130"], ["10"]]},
+      {"customer": "اه أكد", "staff": "تم ✓ طلبك مسجل، رح نتواصل معك للتوصيل", "action": "order_placed"}
+    ]},
+    {"id": "arc-02", "tags": ["order", "all_in_one", "two_items"], "turns": [
+      {"customer": "بدي قميص قطن ابيض L وشنطة جلد، التوصيل لرام الله شارع الإرسال 0598765432", "staff": "قميص أبيض L بـ 60 وحقيبة جلد بـ 90، المجموع 150، والتوصيل لرام الله 20، الإجمالي 170. بأكد؟", "action": "summary", "include": [["170"], ["20"]]},
+      {"customer": "تمام", "staff": "تم تسجيل طلبك ✓", "action": "order_placed"}
+    ]},
+    {"id": "arc-03", "tags": ["order", "needs_variant"], "turns": [
+      {"customer": "عندكم جينز؟ بدي واحد", "staff": "أكيد، بنطلون الجينز بـ 150. أي لون ومقاس؟ في أزرق وأسود، مقاس 30 و32", "action": "ask", "include": [["أزرق", "ازرق"], ["أسود", "اسود"]]},
+      {"customer": "ازرق 32", "staff": "تمام، لوين التوصيل؟", "action": "ask"},
+      {"customer": "جنين، حي البساتين، 0597000111", "staff": "جينز أزرق 32 بـ 150 + توصيل جنين 20 = 170. أأكد؟", "action": "summary", "include": [["170"]]},
+      {"customer": "أكد", "staff": "تم ✓", "action": "order_placed"}
+    ]},
+    {"id": "arc-04", "tags": ["order", "out_of_stock"], "turns": [
+      {"customer": "بدي جينز اسود مقاس 32", "staff": "للأسف الأسود 32 خلصان. في أسود 30 أو أزرق 32، بدك واحد منهم؟", "any_of": ["ask", "answer"], "include": [["خلص", "مش متوفر", "غير متوفر", "نفد"]]},
+      {"customer": "خلص بدي الأزرق 32", "staff": "تمام، لوين التوصيل؟", "action": "ask"},
+      {"customer": "طولكرم شارع نابلس 0599888777", "staff": "150 + 20 توصيل = 170 شيكل. أأكد؟", "action": "summary", "include": [["170"]]}
+    ]},
+    {"id": "arc-05", "tags": ["order", "partial_stock"], "turns": [
+      {"customer": "بدي 3 حذاء رياضي ابيض 42", "staff": "ضايل عنا قطعتين بس من الأبيض 42، بتاخد اتنين؟", "action": "ask", "include": [["2", "اتنين", "قطعتين"]]},
+      {"customer": "اه ماشي", "staff": "تمام، لوين التوصيل؟", "action": "ask"},
+      {"customer": "نابلس المخفية 0599333444", "staff": "حذاء أبيض 42 × 2 = 400 + 10 توصيل = 410. أأكد؟", "action": "summary", "include": [["410"]]}
+    ]},
+    {"id": "arc-06", "tags": ["question", "store_info"], "turns": [
+      {"customer": "لإيمتى فاتحين اليوم؟", "staff": "منفتح لحد 8 المسا، كل يوم ما عدا الجمعة", "action": "answer", "include": [["8"]]}
+    ]},
+    {"id": "arc-07", "tags": ["question", "store_info", "order"], "turns": [
+      {"customer": "اذا ما ضبط معي المقاس بقدر بدّل؟", "staff": "أكيد، تبديل المقاس مجاني خلال أسبوع إذا القطعة بحالتها", "action": "answer", "include": [["أسبوع", "اسبوع", "7"]]},
+      {"customer": "طيب بدي قميص قطن اسود M", "staff": "تمام، لوين التوصيل؟", "action": "ask"}
+    ]},
+    {"id": "arc-08", "tags": ["question", "store_info"], "turns": [
+      {"customer": "كيف الدفع عندكم؟", "staff": "كاش عند الاستلام، أو تحويل على تطبيق البنك قبل التوصيل", "action": "answer", "include": [["كاش", "نقدا", "عند الاستلام"]]}
+    ]},
+    {"id": "arc-09", "tags": ["question", "store_info"], "turns": [
+      {"customer": "وين محلكم بالزبط؟", "staff": "بنابلس، شارع رفيديا جنب صيدلية الشفاء", "action": "answer", "include": [["رفيديا"]]}
+    ]},
+    {"id": "arc-10", "tags": ["question", "delivery_fee"], "turns": [
+      {"customer": "قديش التوصيل لجنين؟", "staff": "التوصيل لجنين 20 شيكل", "action": "answer", "include": [["20"]]}
+    ]},
+    {"id": "arc-11", "tags": ["order", "outside_zones"], "turns": [
+      {"customer": "بدي وشاح حرير", "staff": "أكيد، الوشاح بـ 45. لوين التوصيل؟", "action": "ask"},
+      {"customer": "الخليل", "staff": "للأسف ما منوصّل عالخليل، منوصّل بس لنابلس ورام الله وجنين وطولكرم", "any_of": ["ask", "answer"], "include": [["نابلس"], ["طولكرم"]]}
+    ]},
+    {"id": "arc-12", "tags": ["handoff", "complaint"], "turns": [
+      {"customer": "الفستان الي وصلني مقطوع من تحت!! شو هالشغل", "staff": "بعتذر منك كتير، رح أحوّل للمسؤول يتابع معك هلق", "action": "handoff"}
+    ]},
+    {"id": "arc-13", "tags": ["handoff", "discount", "staff_broke_rule"], "turns": [
+      {"customer": "اذا اخدت 3 قمصان بتعملولي خصم؟", "staff": "ماشي، بعملك خصم 10%", "action": "handoff", "note": "The staff gave a discount on their own; hard rule 5 makes discount requests go to the owner."}
+    ]},
+    {"id": "arc-14", "tags": ["handoff", "allergy"], "turns": [
+      {"customer": "العطر فيه كحول؟ عندي حساسية", "staff": "لحظة بسأل عن المكونات وبرجعلك", "action": "handoff"}
+    ]},
+    {"id": "arc-15", "tags": ["handoff", "human_requested"], "turns": [
+      {"customer": "بدي احكي مع حدا من المحل لو سمحت", "staff": "أكيد، هلق بيحكيك المسؤول", "action": "handoff"}
+    ]},
+    {"id": "arc-16", "tags": ["handoff", "large_order"], "turns": [
+      {"customer": "بدي 40 قميص لشركة، بالجملة", "staff": "طلبية كبيرة، رح حوّلك للمدير يحكي معك بالسعر", "action": "handoff"}
+    ]},
+    {"id": "arc-17", "tags": ["handoff", "not_in_data"], "turns": [
+      {"customer": "بتعملوا تطريز اسم عالقميص؟", "staff": "لحظة بسأل وبرجعلك", "action": "handoff"}
+    ]},
+    {"id": "arc-18", "tags": ["order", "unknown_product"], "turns": [
+      {"customer": "عندكم ساعات يد؟", "staff": "للأسف ما عنا ساعات. عنا شنط وعطور ووشاحات", "any_of": ["answer", "ask"], "include": [["ما لقيت", "ما عنا", "مش موجود", "ما في"]]}
+    ]},
+    {"id": "arc-19", "tags": ["order", "outside_zones", "staff_broke_rule"], "turns": [
+      {"customer": "بدي شنطة جلد", "staff": "أكيد، الحقيبة بـ 90. لوين التوصيل؟", "action": "ask"},
+      {"customer": "الخليل، 0599000222", "staff": "التوصيل للخليل 25 شيكل، المجموع 115", "any_of": ["ask", "answer"], "include": [["نابلس"]], "exclude": [["25"], ["115"]], "note": "The staff invented a fee for an area the store doesn't deliver to; hard rule 4/5: never invent a fee, say where we deliver."}
+    ]},
+    {"id": "arc-20", "tags": ["order", "order_status"], "turns": [
+      {"customer": "بدي وشاح حرير لنابلس شارع فيصل 0599555666", "staff": "الوشاح 45 + توصيل 10 = 55. أأكد؟", "action": "summary", "include": [["55"]]},
+      {"customer": "أكد", "staff": "تم ✓", "action": "order_placed"},
+      {"customer": "امتى بيوصل الطلب؟", "staff": "طلبك قيد التجهيز، بيوصلك خلال يوم أو يومين", "action": "answer", "include": [["استلمنا", "قيد", "بيتجهز"]]}
+    ]},
+    {"id": "arc-21", "tags": ["order", "edit"], "turns": [
+      {"customer": "بدي 2 قميص قطن ابيض M لنابلس رفيديا 0599444555", "staff": "قميصين أبيض M = 120 + 10 توصيل = 130. أأكد؟", "action": "summary", "include": [["130"]]},
+      {"customer": "لا خليهم 3", "staff": "صاروا 3 قمصان = 180 + 10 = 190. أأكد؟", "action": "summary", "include": [["190"]]},
+      {"customer": "أكد", "staff": "تم ✓", "action": "order_placed"}
+    ]},
+    {"id": "arc-22", "tags": ["order", "cancel"], "turns": [
+      {"customer": "بدي عطر ورد 100ml", "staff": "العطر 100ml بـ 85. لوين التوصيل؟", "action": "ask"},
+      {"customer": "خلص بلاش، ألغي", "staff": "تمام، ألغيت الطلب", "action": "answer"}
+    ]}
+  ]
+}

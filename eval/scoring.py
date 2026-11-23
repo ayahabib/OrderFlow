@@ -78,3 +78,36 @@ def summarize(scores: list[dict]) -> dict[str, dict]:
         f: {"correct": c, "total": t, "accuracy": round(c / t, 4) if t else None}
         for f, (c, t) in totals.items()
     }
+
+
+# --- archive eval (task 3.7): bot turn vs. staff turn ------------------------------------
+
+ARCHIVE_ACTIONS = ("ask", "summary", "order_placed", "answer", "handoff")
+
+
+def bot_action(*, escalated: bool, order_placed: bool, mode: str, pending: bool, has_draft: bool) -> str:
+    """What the bot did on one turn, from engine signals (not from its wording)."""
+    if escalated:
+        return "handoff"
+    if order_placed:
+        return "order_placed"
+    if mode == "awaiting_confirmation" and not pending:
+        return "summary"
+    if pending or has_draft:
+        return "ask"            # an open question, or a draft still missing info
+    return "answer"             # Q&A, a decline, a cancel, a greeting
+
+
+def _has(text: str, alternatives: list[str]) -> bool:
+    return any(normalize_arabic(a) in text for a in alternatives)
+
+
+def score_turn(expected: dict, action: str, reply: str) -> dict:
+    """Pass = same action as the staff (or one of `any_of`), every `include` group present, no `exclude` group."""
+    text = normalize_arabic(reply or "")
+    allowed = expected.get("any_of") or [expected["action"]]
+    missing = [g for g in expected.get("include", []) if not _has(text, g)]
+    forbidden = [g for g in expected.get("exclude", []) if _has(text, g)]
+    action_ok = action in allowed
+    return {"action_ok": action_ok, "facts_ok": not missing and not forbidden,
+            "missing": missing, "forbidden": forbidden, "passed": action_ok and not missing and not forbidden}

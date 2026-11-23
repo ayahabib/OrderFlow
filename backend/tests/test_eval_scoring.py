@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "eval"))
 
-from scoring import pair_items, score_record, summarize  # noqa: E402
+from scoring import bot_action, pair_items, score_record, score_turn, summarize  # noqa: E402
 
 
 def item(product, color=None, size=None, qty=1):
@@ -68,3 +68,29 @@ def test_summarize_counts_each_item():
     s = summarize(scores)
     assert s["intent"] == {"correct": 1, "total": 2, "accuracy": 0.5}
     assert s["product_text"] == {"correct": 2, "total": 3, "accuracy": 0.6667}
+
+
+# --- archive eval (3.7) ---
+
+def test_bot_action_from_engine_signals():
+    base = dict(escalated=False, order_placed=False, mode="idle", pending=False, has_draft=False)
+    assert bot_action(**{**base, "escalated": True, "has_draft": True}) == "handoff"
+    assert bot_action(**{**base, "order_placed": True}) == "order_placed"
+    assert bot_action(**{**base, "mode": "awaiting_confirmation", "has_draft": True}) == "summary"
+    assert bot_action(**{**base, "mode": "awaiting_confirmation", "pending": True}) == "ask"   # e.g. "same order again?"
+    assert bot_action(**{**base, "mode": "collecting", "has_draft": True}) == "ask"
+    assert bot_action(**base) == "answer"
+
+
+def test_score_turn_action_include_exclude():
+    exp = {"action": "summary", "include": [["130"], ["توصيل", "التوصيل"]]}
+    assert score_turn(exp, "summary", "الإجمالي: 130.00 ILS، التوصيل 10")["passed"]
+    missing = score_turn(exp, "summary", "الإجمالي: 120.00 ILS")
+    assert not missing["passed"] and missing["action_ok"] and len(missing["missing"]) == 2
+    assert not score_turn(exp, "ask", "الإجمالي 130 والتوصيل")["action_ok"]
+
+    out_of_zone = {"any_of": ["ask", "answer"], "include": [["نابلس"]], "exclude": [["25"]]}
+    assert score_turn(out_of_zone, "answer", "منوصّل بس على: نابلس، جنين")["passed"]
+    invented = score_turn(out_of_zone, "answer", "التوصيل 25 لنابلس")
+    assert not invented["passed"] and invented["forbidden"] == [["25"]]
+    assert score_turn({"action": "handoff"}, "handoff", "حوّلت سؤالك")["passed"]
