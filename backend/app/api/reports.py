@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.api.auth import get_current_store_id
 from app.db.pool import get_db
+from app.services import forecasting
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -155,3 +156,35 @@ async def stock_by_product(
         store_id,
     )
     return [ProductStock(**dict(r)) for r in rows]
+
+
+# --- stock run-out forecast (3.4) ---
+
+class ForecastItem(BaseModel):
+    variant_id: UUID
+    product_id: UUID
+    product_name: str
+    variant_name: str
+    stock_quantity: int
+    sold: int
+    daily_rate: Decimal
+    days_left: int
+    run_out_date: date
+
+
+class ForecastReport(BaseModel):
+    window_days: int      # sales history used for the average
+    within_days: int
+    items: list[ForecastItem]
+
+
+@router.get("/forecast", response_model=ForecastReport)
+async def stock_forecast(
+    days: Annotated[int, Query(ge=1, le=90)] = 14,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> ForecastReport:
+    """Variants expected to run out within `days` days at their recent sales rate."""
+    items = await forecasting.forecast(conn, store_id, days)
+    return ForecastReport(window_days=forecasting.WINDOW_DAYS, within_days=days,
+                          items=[ForecastItem(**vars(f)) for f in items])

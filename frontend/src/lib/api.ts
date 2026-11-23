@@ -426,3 +426,20 @@ export const confirmOwnerAction = (id: string) =>
   api<ConfirmedStockAction>(`/api/owner-chat/confirm/${id}`, { method: 'POST' })
 export const cancelOwnerAction = (id: string) =>
   api<null>(`/api/owner-chat/cancel/${id}`, { method: 'POST' })
+
+// --- stock run-out forecast (3.4) ---
+
+export type ForecastItem = {
+  variant_id: string
+  product_id: string
+  product_name: string
+  variant_name: string
+  stock_quantity: number
+  sold: number
+  daily_rate: string
+  days_left: number
+  run_out_date: string
+}
+export type ForecastReport = { window_days: number; within_days: number; items: ForecastItem[] }
+
+export const getForecast = (days: number) => api<ForecastReport>(`/api/reports/forecast?days=${days}`)

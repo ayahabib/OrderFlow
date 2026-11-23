@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import BarList from '../components/BarList'
+import RunOutForecast from '../components/RunOutForecast'
 import { getSalesReport, type SalesReport } from '../lib/api'
 
 const PERIODS = [7, 30, 90]
@@ -152,6 +153,8 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      <RunOutForecast />
     </section>
   )
 }
