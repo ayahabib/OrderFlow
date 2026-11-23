@@ -21,6 +21,7 @@ class PlacedOrder:
     order_id: UUID
     order_number: int
     total: Decimal
+    tracking_token: str = ""
 
 
 class InsufficientStockError(Exception):
@@ -57,18 +58,19 @@ async def place_order(
         if number is None:
             raise ValueError("unknown store")
 
-        order_id = await conn.fetchval(
+        placed_row = await conn.fetchrow(
             """
             insert into orders (store_id, order_number, customer_id, conversation_id, status,
                                 delivery_address, delivery_zone_id, delivery_fee, subtotal, total,
                                 free_delivery_offer_id, possible_duplicate_of)
             values ($1, $2, $3, $4, 'new', $5, $6, $7, $8, $9, $10, $11)
-            returning id
+            returning id, tracking_token
             """,
             store_id, number, customer_id, conversation_id, address, zone_id,
             totals.delivery_fee, totals.subtotal, totals.total, totals.free_delivery_offer_id,
             possible_duplicate_of,
         )
+        order_id = placed_row["id"]
 
         # Snapshots: names and prices as the customer saw them (DATABASE.md principle 6).
         await conn.executemany(
@@ -118,7 +120,8 @@ async def place_order(
             customer_id, store_id, phone, address,
         )
 
-    return PlacedOrder(order_id=order_id, order_number=number, total=totals.total)
+    return PlacedOrder(order_id=order_id, order_number=number, total=totals.total,
+                       tracking_token=placed_row["tracking_token"])
 
 
 # --- status changes from the orders page (task 1.10) --------------------------------

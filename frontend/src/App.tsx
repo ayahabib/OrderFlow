@@ -12,6 +12,7 @@ import LoginPage from './pages/LoginPage'
 import SettingsPage from './pages/SettingsPage'
 import SimulatorPage from './pages/SimulatorPage'
 import StockPage from './pages/StockPage'
+import TrackPage from './pages/TrackPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
 
 function Loading() {
@@ -69,7 +70,11 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Root />
+        <Routes>
+          {/* Public: the customer's order tracking link (3.6), no login. */}
+          <Route path="/track/:token" element={<TrackPage />} />
+          <Route path="*" element={<Root />} />
+        </Routes>
       </BrowserRouter>
     </AuthProvider>
   )

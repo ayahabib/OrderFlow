@@ -483,3 +483,20 @@ details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y:
 /* ===================== incomplete orders (3.5) ===================== */
 .incomplete-orders summary { cursor: pointer; }
 .incomplete-orders .table-wrap { margin-top: 12px; }
+
+/* ===================== public order tracking (3.6) ===================== */
+.track-page { min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; background: var(--surface-2); }
+.track-card { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 10px; }
+.track-card h1 { margin: 0; }
+.track-card h2 { margin: 10px 0 0; font-size: 1rem; }
+.track-steps { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.track-steps li { position: relative; padding: 6px 30px 14px 0; color: var(--muted); border-inline-start: 2px solid var(--rule); margin-inline-start: 9px; }
+.track-steps li:last-child, .track-steps li.done:last-child { border-inline-start-color: transparent; }
+.track-steps li::before { content: ''; position: absolute; inset-inline-start: -10px; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--rule); }
+.track-steps li.done { color: var(--ink); border-inline-start-color: var(--olive); }
+.track-steps li.done::before { background: var(--olive); border-color: var(--olive); }
+.track-steps li.current { color: var(--ink); font-weight: 600; }
+.track-steps li.current::before { background: var(--saffron); border-color: var(--saffron); }
+.track-items { margin: 0; padding-inline-start: 20px; }
+.track-totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 6px 0 0; }
+.track-totals dd { margin: 0; }

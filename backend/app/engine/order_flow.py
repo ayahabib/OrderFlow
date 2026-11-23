@@ -109,6 +109,7 @@ class Context:
     large_amount: Decimal
     customer_phone: str | None = None
     embedder: Embedder | None = None   # knowledge-base search for questions (2.2)
+    tracking_base_url: str = ""        # frontend address for /track/<token> links (3.6)
 
 
 @dataclass
@@ -212,6 +213,44 @@ def _reset() -> BotState:
     return BotState()
 
 
+STATUS_FOR_CUSTOMER = {
+    "new": "استلمناه وبيتجهّز قريباً",
+    "in_progress": "قيد التجهيز والتوصيل",
+    "delivered": "تم التوصيل",
+    "cancelled": "ملغي",
+}
+STATUS_DAYS = 30   # orders older than this aren't "where is my order?" material
+STATUS_MAX = 3
+
+
+def _tracking_link(ctx: Context, token: str) -> str:
+    return f"{ctx.tracking_base_url.rstrip('/')}/track/{token}"
+
+
+async def _order_status(ctx: Context, state: BotState, text: str) -> Outcome:
+    """"Where is my order?": the status comes from the database, never from the LLM (owner's choice, 3.6).
+
+    No recent order for this customer -> the owner answers (hard rule 4: never guess).
+    The draft (if any) is kept, so the customer can carry on ordering.
+    """
+    rows = await ctx.conn.fetch(
+        """
+        select order_number, status::text as status, tracking_token
+          from orders
+         where store_id = $1 and customer_id = $2 and created_at >= now() - make_interval(days => $3)
+         order by created_at desc
+         limit $4
+        """,
+        ctx.store_id, ctx.customer_id, STATUS_DAYS, STATUS_MAX,
+    )
+    if not rows:
+        return await _escalate(ctx, state, text, "order_status")
+    lines = [f"طلبك #{r['order_number']}: {STATUS_FOR_CUSTOMER[r['status']]}.\n"
+             f"تابعه هون: {_tracking_link(ctx, r['tracking_token'])}" for r in rows]
+    lines.append("إذا في مشكلة بالطلب احكيلي وبحوّلك لصاحب المتجر.")
+    return Outcome(_reply("\n\n".join(lines)), state)
+
+
 async def _decline_area(ctx: Context) -> Outcome:
     """Out of our delivery area: say so, list where we deliver, close the order. No owner handoff (owner's choice)."""
     names = "، ".join(z.name for z in await delivery.active_zones(ctx.conn, ctx.store_id))
@@ -227,6 +266,8 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
 
     # 0. Hard rule 5: complaint, discount, allergy, "talk to a person"... the bot never continues alone.
     rule = rules.keyword_rule(text)
+    if rule == "order_status":
+        return await _order_status(ctx, state, text)   # answered from the database (3.6)
     if rule:
         return await _escalate(ctx, state, text, rule)
 
@@ -256,6 +297,8 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
     except LLMError:
         return await _escalate(ctx, state, text, "llm_failure")  # hard rule 6: never lose the message
 
+    if analysis.sensitive_reason == "order_status":
+        return await _order_status(ctx, state, text)
     if analysis.sensitive_reason:
         return await _escalate(ctx, state, text, analysis.sensitive_reason)
 
@@ -660,5 +703,6 @@ async def _confirm(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         f"رقم الطلب: #{placed.order_number}",
         f"الإجمالي: {_money(placed.total, ctx.currency)}",
         f"رح نتواصل معك على {state.phone} لترتيب التوصيل. شكراً إلك!",
+        *([f"تابع حالة طلبك هون: {_tracking_link(ctx, placed.tracking_token)}"] if placed.tracking_token else []),
     ])
     return Outcome(_reply(text), _reset())

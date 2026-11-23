@@ -89,6 +89,7 @@ async def respond(
             llm=llm, currency=row["currency"],
             large_item_qty=row["large_order_item_qty"], large_total_qty=row["large_order_total_qty"],
             large_amount=row["large_order_amount"], customer_phone=row["phone"], embedder=embedder,
+            tracking_base_url=dashboard_url,
         )
         outcome = await order_flow.handle(ctx, order_flow.BotState.load(raw_state), text)
         reply = outcome.reply

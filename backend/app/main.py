@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 
-from app.api import channels, conversations, escalations, knowledge, me, notifications, offers, orders, owner_chat, products, reports, stores, zones
+from app.api import channels, conversations, escalations, knowledge, me, notifications, offers, orders, owner_chat, products, reports, stores, tracking, zones
 from app.config import get_settings
 from app.webhooks import telegram as telegram_webhook
 from app.webhooks import web_chat
@@ -48,6 +48,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.include_router(orders.router)
     app.include_router(reports.router)
     app.include_router(owner_chat.router)
+    app.include_router(tracking.router)
     app.include_router(conversations.router)
     app.include_router(escalations.router)
     app.include_router(knowledge.router)
