@@ -146,11 +146,29 @@ async def test_partial_stock_offer_yes(db_tx):
 
 
 @pytest.mark.db
-async def test_out_of_stock_item_alone(db_tx):
+async def test_sold_out_option_offers_what_is_in_stock(db_tx):
+    """Archive eval 3.7: keep the product and offer the options left, like staff do."""
     store = await new_store(db_tx)
     llm = ScriptedLLM({"بدي فستان ازرق L": analysis(items=[item("فستان", "أزرق", "L")])})   # stock 0
     async with client_for(db_tx, llm=llm) as c:
-        r = await Chat(c, store).say("بدي فستان ازرق L")
+        chat = Chat(c, store)
+        r = await chat.say("بدي فستان ازرق L")
+        assert "خلص" in r["content"] and "المتوفر منه" in r["content"]
+        assert "اللون: أحمر، أزرق" in r["content"] and "المقاس: L، M" in r["content"]   # in stock: red M/L, blue M
+        r = await chat.say("خلص بدي الأحمر L")          # read without the LLM
+        assert r["content"] == ASK_ADDRESS
+    assert len(llm.calls) == 1
+    assert "أحمر / L" in (await conversation(db_tx, store))["bot_state"]
+
+
+@pytest.mark.db
+async def test_product_sold_out_completely_is_dropped(db_tx):
+    store = await new_store(db_tx)
+    await db_tx.execute("update product_variants set stock_quantity = 0 where store_id = $1 and product_id = "
+                        "(select id from products where store_id = $1 and name = 'حقيبة جلد')", store)
+    llm = ScriptedLLM({"بدي شنطة": analysis(items=[item("شنطة")])})
+    async with client_for(db_tx, llm=llm) as c:
+        r = await Chat(c, store).say("بدي شنطة")
     assert "خلص" in r["content"] and "شو بتحب تطلب" in r["content"]
 
 
@@ -326,6 +344,7 @@ def test_parse_options():
     assert parse_options("أحمر M", values) == {"color": "أحمر", "size": "M"}
     assert parse_options("بدي الازرق مقاس لارج", values) == {"color": "أزرق", "size": "L"}
     assert parse_options("حمرا", values) == {"color": "أحمر"}
+    assert parse_options("خلص بدي الأزرق L", values) == {"color": "أزرق", "size": "L"}   # "ok then, I want..."
     assert parse_options("أخضر", values) is None             # not offered -> LLM decides
     assert parse_options("بس الجودة سيئة", values) is None  # extra words -> LLM (may be a complaint)
 

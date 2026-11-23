@@ -1,0 +1,856 @@
+{
+  "eval": "archive",
+  "model": "gpt-5.4-mini",
+  "embed_model": "text-embedding-3-small",
+  "summary": {
+    "turns": 41,
+    "turn_pass": 95.1,
+    "action_agreement": 95.1,
+    "facts_agreement": 97.6,
+    "handoff_recall": 100.0,
+    "conversations": 22,
+    "conversation_pass": 90.9,
+    "by_tag": {
+      "all_in_one": {
+        "passed": 1,
+        "total": 1
+      },
+      "allergy": {
+        "passed": 1,
+        "total": 1
+      },
+      "cancel": {
+        "passed": 1,
+        "total": 1
+      },
+      "complaint": {
+        "passed": 1,
+        "total": 1
+      },
+      "delivery_fee": {
+        "passed": 1,
+        "total": 1
+      },
+      "discount": {
+        "passed": 1,
+        "total": 1
+      },
+      "edit": {
+        "passed": 1,
+        "total": 1
+      },
+      "handoff": {
+        "passed": 6,
+        "total": 6
+      },
+      "human_requested": {
+        "passed": 1,
+        "total": 1
+      },
+      "large_order": {
+        "passed": 1,
+        "total": 1
+      },
+      "needs_variant": {
+        "passed": 0,
+        "total": 1
+      },
+      "not_in_data": {
+        "passed": 1,
+        "total": 1
+      },
+      "order": {
+        "passed": 11,
+        "total": 12
+      },
+      "order_status": {
+        "passed": 1,
+        "total": 1
+      },
+      "out_of_stock": {
+        "passed": 1,
+        "total": 1
+      },
+      "outside_zones": {
+        "passed": 2,
+        "total": 2
+      },
+      "partial_stock": {
+        "passed": 1,
+        "total": 1
+      },
+      "question": {
+        "passed": 4,
+        "total": 5
+      },
+      "staff_broke_rule": {
+        "passed": 2,
+        "total": 2
+      },
+      "step_by_step": {
+        "passed": 1,
+        "total": 1
+      },
+      "store_info": {
+        "passed": 3,
+        "total": 4
+      },
+      "two_items": {
+        "passed": 1,
+        "total": 1
+      },
+      "unknown_product": {
+        "passed": 1,
+        "total": 1
+      }
+    }
+  },
+  "turns": [
+    {
+      "conversation": "arc-01",
+      "turn": 1,
+      "customer": "مرحبا بدي فستان صيفي احمر مقاس M",
+      "staff": "أهلين! الفستان الأحمر M متوفر بـ 120 شيكل. لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 10165,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-01",
+      "turn": 2,
+      "customer": "نابلس، شارع رفيديا",
+      "staff": "تمام، ابعتلي رقم تلفونك لو سمحت",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "شو رقم تلفونك للتواصل؟",
+      "bot_action": "ask",
+      "ms": 7779,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-01",
+      "turn": 3,
+      "customer": "0599111222",
+      "staff": "طلبك: فستان صيفي أحمر M بـ 120 + توصيل نابلس 10 = 130 شيكل. بأكدلك؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• فستان صيفي (أحمر / M) × 1 = 120.00 ILS\nالمجموع: 120.00 ILS\nالتوصيل (نابلس): 10.00 ILS\nالإجمالي: 130.00 ILS\nالعنوان: نابلس، شارع رفيديا\nالهاتف: 0599111222\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 7752,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-01",
+      "turn": 4,
+      "customer": "اه أكد",
+      "staff": "تم ✓ طلبك مسجل، رح نتواصل معك للتوصيل",
+      "expected": [
+        "order_placed"
+      ],
+      "note": null,
+      "bot": "تم تأكيد طلبك ✓\nرقم الطلب: #1\nالإجمالي: 130.00 ILS\nرح نتواصل معك على 0599111222 لترتيب التوصيل. شكراً إلك!\nتابع حالة طلبك هون: http://localhost:5173/track/21d967caa8c74ff7872eaf70e2568e3a",
+      "bot_action": "order_placed",
+      "ms": 14707,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-02",
+      "turn": 1,
+      "customer": "بدي قميص قطن ابيض L وشنطة جلد، التوصيل لرام الله شارع الإرسال 0598765432",
+      "staff": "قميص أبيض L بـ 60 وحقيبة جلد بـ 90، المجموع 150، والتوصيل لرام الله 20، الإجمالي 170. بأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• قميص قطن (أبيض / L) × 1 = 60.00 ILS\n• حقيبة جلد × 1 = 90.00 ILS\nالمجموع: 150.00 ILS\nالتوصيل (رام الله): 20.00 ILS\nالإجمالي: 170.00 ILS\nالعنوان: رام الله شارع الإرسال\nالهاتف: 0598765432\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 14864,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-02",
+      "turn": 2,
+      "customer": "تمام",
+      "staff": "تم تسجيل طلبك ✓",
+      "expected": [
+        "order_placed"
+      ],
+      "note": null,
+      "bot": "تم تأكيد طلبك ✓\nرقم الطلب: #2\nالإجمالي: 170.00 ILS\nرح نتواصل معك على 0598765432 لترتيب التوصيل. شكراً إلك!\nتابع حالة طلبك هون: http://localhost:5173/track/791e9621b9c44df38bd8c33ac8034fc9",
+      "bot_action": "order_placed",
+      "ms": 14791,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-03",
+      "turn": 1,
+      "customer": "عندكم جينز؟ بدي واحد",
+      "staff": "أكيد، بنطلون الجينز بـ 150. أي لون ومقاس؟ في أزرق وأسود، مقاس 30 و32",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "بنطلون جينز: 150.00 ILS. اللون المتوفر: أزرق، أسود. المقاس المتوفر: 30، 32.\nإذا بدك تطلب، اكتبلي المنتج واللون والمقاس والكمية.",
+      "bot_action": "answer",
+      "ms": 11870,
+      "action_ok": false,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": false
+    },
+    {
+      "conversation": "arc-03",
+      "turn": 2,
+      "customer": "ازرق 32",
+      "staff": "تمام، لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 7530,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-03",
+      "turn": 3,
+      "customer": "جنين، حي البساتين، 0597000111",
+      "staff": "جينز أزرق 32 بـ 150 + توصيل جنين 20 = 170. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• بنطلون جينز (أزرق / 32) × 1 = 150.00 ILS\nالمجموع: 150.00 ILS\nالتوصيل (جنين): 20.00 ILS\nالإجمالي: 170.00 ILS\nالعنوان: جنين، حي البساتين\nالهاتف: 0597000111\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 11222,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-03",
+      "turn": 4,
+      "customer": "أكد",
+      "staff": "تم ✓",
+      "expected": [
+        "order_placed"
+      ],
+      "note": null,
+      "bot": "تم تأكيد طلبك ✓\nرقم الطلب: #3\nالإجمالي: 170.00 ILS\nرح نتواصل معك على 0597000111 لترتيب التوصيل. شكراً إلك!\nتابع حالة طلبك هون: http://localhost:5173/track/5c5021a6747741ba9b9d5470a6cf97fd",
+      "bot_action": "order_placed",
+      "ms": 11216,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-04",
+      "turn": 1,
+      "customer": "بدي جينز اسود مقاس 32",
+      "staff": "للأسف الأسود 32 خلصان. في أسود 30 أو أزرق 32، بدك واحد منهم؟",
+      "expected": [
+        "ask",
+        "answer"
+      ],
+      "note": null,
+      "bot": "بنطلون جينز (أسود / 32) خلص من المخزون حالياً. المتوفر منه: اللون: أزرق، أسود؛ المقاس: 30، 32. أي واحد بدك؟",
+      "bot_action": "ask",
+      "ms": 8755,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-04",
+      "turn": 2,
+      "customer": "خلص بدي الأزرق 32",
+      "staff": "تمام، لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 7229,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-04",
+      "turn": 3,
+      "customer": "طولكرم شارع نابلس 0599888777",
+      "staff": "150 + 20 توصيل = 170 شيكل. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• بنطلون جينز (أزرق / 32) × 1 = 150.00 ILS\nالمجموع: 150.00 ILS\nالتوصيل (طولكرم): 20.00 ILS\nالإجمالي: 170.00 ILS\nالعنوان: طولكرم شارع نابلس\nالهاتف: 0599888777\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 8784,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-05",
+      "turn": 1,
+      "customer": "بدي 3 حذاء رياضي ابيض 42",
+      "staff": "ضايل عنا قطعتين بس من الأبيض 42، بتاخد اتنين؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "المتوفر من حذاء رياضي (أبيض / 42) 2 بس. بتحب تاخد 2؟",
+      "bot_action": "ask",
+      "ms": 7829,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-05",
+      "turn": 2,
+      "customer": "اه ماشي",
+      "staff": "تمام، لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 6197,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-05",
+      "turn": 3,
+      "customer": "نابلس المخفية 0599333444",
+      "staff": "حذاء أبيض 42 × 2 = 400 + 10 توصيل = 410. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• حذاء رياضي (أبيض / 42) × 2 = 400.00 ILS\nالمجموع: 400.00 ILS\nالتوصيل (نابلس): 10.00 ILS\nالإجمالي: 410.00 ILS\nالعنوان: نابلس المخفية\nالهاتف: 0599333444\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 8671,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-06",
+      "turn": 1,
+      "customer": "لإيمتى فاتحين اليوم؟",
+      "staff": "منفتح لحد 8 المسا، كل يوم ما عدا الجمعة",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "بتأكدلك من هالشي وبرجعلك. حوّلت رسالتك لصاحب المتجر.",
+      "bot_action": "handoff",
+      "ms": 9879,
+      "action_ok": false,
+      "facts_ok": false,
+      "missing": [
+        [
+          "8"
+        ]
+      ],
+      "forbidden": [],
+      "passed": false
+    },
+    {
+      "conversation": "arc-07",
+      "turn": 1,
+      "customer": "اذا ما ضبط معي المقاس بقدر بدّل؟",
+      "staff": "أكيد، تبديل المقاس مجاني خلال أسبوع إذا القطعة بحالتها",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "إي، بتقدر تبدّل المقاس مجاناً خلال أسبوع إذا القطعة بحالتها الأصلية.",
+      "bot_action": "answer",
+      "ms": 8216,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-07",
+      "turn": 2,
+      "customer": "طيب بدي قميص قطن اسود M",
+      "staff": "تمام، لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 8818,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-08",
+      "turn": 1,
+      "customer": "كيف الدفع عندكم؟",
+      "staff": "كاش عند الاستلام، أو تحويل على تطبيق البنك قبل التوصيل",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "الدفع كاش عند الاستلام، أو تحويل على تطبيق البنك قبل التوصيل.",
+      "bot_action": "answer",
+      "ms": 7438,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-09",
+      "turn": 1,
+      "customer": "وين محلكم بالزبط؟",
+      "staff": "بنابلس، شارع رفيديا جنب صيدلية الشفاء",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "المحل بنابلس، شارع رفيديا، جنب صيدلية الشفاء.",
+      "bot_action": "answer",
+      "ms": 10908,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-10",
+      "turn": 1,
+      "customer": "قديش التوصيل لجنين؟",
+      "staff": "التوصيل لجنين 20 شيكل",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "اه منوصّل على جنين، وأجرة التوصيل 20.00 ILS.",
+      "bot_action": "answer",
+      "ms": 7083,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-11",
+      "turn": 1,
+      "customer": "بدي وشاح حرير",
+      "staff": "أكيد، الوشاح بـ 45. لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 7906,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-11",
+      "turn": 2,
+      "customer": "الخليل",
+      "staff": "للأسف ما منوصّل عالخليل، منوصّل بس لنابلس ورام الله وجنين وطولكرم",
+      "expected": [
+        "ask",
+        "answer"
+      ],
+      "note": null,
+      "bot": "لأي منطقة التوصيل؟ منوصّل على: جنين، رام الله، طولكرم، نابلس.",
+      "bot_action": "ask",
+      "ms": 8134,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-12",
+      "turn": 1,
+      "customer": "الفستان الي وصلني مقطوع من تحت!! شو هالشغل",
+      "staff": "بعتذر منك كتير، رح أحوّل للمسؤول يتابع معك هلق",
+      "expected": [
+        "handoff"
+      ],
+      "note": null,
+      "bot": "بعتذر منك على هالشي. حوّلت رسالتك لصاحب المتجر وبيتواصل معك بأقرب وقت.",
+      "bot_action": "handoff",
+      "ms": 5801,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-13",
+      "turn": 1,
+      "customer": "اذا اخدت 3 قمصان بتعملولي خصم؟",
+      "staff": "ماشي، بعملك خصم 10%",
+      "expected": [
+        "handoff"
+      ],
+      "note": "The staff gave a discount on their own; hard rule 5 makes discount requests go to the owner.",
+      "bot": "الأسعار الخاصة والخصومات بيقررها صاحب المتجر. حوّلتله رسالتك وبيرد عليك بأقرب وقت.",
+      "bot_action": "handoff",
+      "ms": 5720,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-14",
+      "turn": 1,
+      "customer": "العطر فيه كحول؟ عندي حساسية",
+      "staff": "لحظة بسأل عن المكونات وبرجعلك",
+      "expected": [
+        "handoff"
+      ],
+      "note": null,
+      "bot": "ما بدي أعطيك معلومة غلط عن المكونات أو الحساسية. حوّلت سؤالك لصاحب المتجر وبيرد عليك.",
+      "bot_action": "handoff",
+      "ms": 5625,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-15",
+      "turn": 1,
+      "customer": "بدي احكي مع حدا من المحل لو سمحت",
+      "staff": "أكيد، هلق بيحكيك المسؤول",
+      "expected": [
+        "handoff"
+      ],
+      "note": null,
+      "bot": "أكيد، رح يتواصل معك صاحب المتجر بأقرب وقت.",
+      "bot_action": "handoff",
+      "ms": 6047,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-16",
+      "turn": 1,
+      "customer": "بدي 40 قميص لشركة، بالجملة",
+      "staff": "طلبية كبيرة، رح حوّلك للمدير يحكي معك بالسعر",
+      "expected": [
+        "handoff"
+      ],
+      "note": null,
+      "bot": "الطلبيات الكبيرة بيتابعها صاحب المتجر بنفسه. حوّلتله طلبك وبيتواصل معك بأقرب وقت.",
+      "bot_action": "handoff",
+      "ms": 5572,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-17",
+      "turn": 1,
+      "customer": "بتعملوا تطريز اسم عالقميص؟",
+      "staff": "لحظة بسأل وبرجعلك",
+      "expected": [
+        "handoff"
+      ],
+      "note": null,
+      "bot": "بتأكدلك من هالشي وبرجعلك. حوّلت رسالتك لصاحب المتجر.",
+      "bot_action": "handoff",
+      "ms": 8676,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-18",
+      "turn": 1,
+      "customer": "عندكم ساعات يد؟",
+      "staff": "للأسف ما عنا ساعات. عنا شنط وعطور ووشاحات",
+      "expected": [
+        "answer",
+        "ask"
+      ],
+      "note": null,
+      "bot": "للأسف هاد المنتج مش موجود عنا. عنا مثلاً: حقيبة جلد.\nإذا بدك تطلب، اكتبلي المنتج واللون والمقاس والكمية.",
+      "bot_action": "answer",
+      "ms": 8650,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-19",
+      "turn": 1,
+      "customer": "بدي شنطة جلد",
+      "staff": "أكيد، الحقيبة بـ 90. لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 8512,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-19",
+      "turn": 2,
+      "customer": "الخليل، 0599000222",
+      "staff": "التوصيل للخليل 25 شيكل، المجموع 115",
+      "expected": [
+        "ask",
+        "answer"
+      ],
+      "note": "The staff invented a fee for an area the store doesn't deliver to; hard rule 4/5: never invent a fee, say where we deliver.",
+      "bot": "لأي منطقة التوصيل؟ منوصّل على: جنين، رام الله، طولكرم، نابلس.",
+      "bot_action": "ask",
+      "ms": 7604,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-20",
+      "turn": 1,
+      "customer": "بدي وشاح حرير لنابلس شارع فيصل 0599555666",
+      "staff": "الوشاح 45 + توصيل 10 = 55. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• وشاح حرير × 1 = 45.00 ILS\nالمجموع: 45.00 ILS\nالتوصيل (نابلس): 10.00 ILS\nالإجمالي: 55.00 ILS\nالعنوان: نابلس شارع فيصل\nالهاتف: 0599555666\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 11818,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-20",
+      "turn": 2,
+      "customer": "أكد",
+      "staff": "تم ✓",
+      "expected": [
+        "order_placed"
+      ],
+      "note": null,
+      "bot": "تم تأكيد طلبك ✓\nرقم الطلب: #4\nالإجمالي: 55.00 ILS\nرح نتواصل معك على 0599555666 لترتيب التوصيل. شكراً إلك!\nتابع حالة طلبك هون: http://localhost:5173/track/7585ca53f67f41bcb2ab0a1d64259974",
+      "bot_action": "order_placed",
+      "ms": 13958,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-20",
+      "turn": 3,
+      "customer": "امتى بيوصل الطلب؟",
+      "staff": "طلبك قيد التجهيز، بيوصلك خلال يوم أو يومين",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "طلبك #4: استلمناه وبيتجهّز قريباً.\nتابعه هون: http://localhost:5173/track/7585ca53f67f41bcb2ab0a1d64259974\n\nإذا في مشكلة بالطلب احكيلي وبحوّلك لصاحب المتجر.",
+      "bot_action": "answer",
+      "ms": 5204,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-21",
+      "turn": 1,
+      "customer": "بدي 2 قميص قطن ابيض M لنابلس رفيديا 0599444555",
+      "staff": "قميصين أبيض M = 120 + 10 توصيل = 130. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• قميص قطن (أبيض / M) × 2 = 120.00 ILS\nالمجموع: 120.00 ILS\nالتوصيل (نابلس): 10.00 ILS\nالإجمالي: 130.00 ILS\nالعنوان: نابلس رفيديا\nالهاتف: 0599444555\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 10386,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-21",
+      "turn": 2,
+      "customer": "لا خليهم 3",
+      "staff": "صاروا 3 قمصان = 180 + 10 = 190. أأكد؟",
+      "expected": [
+        "summary"
+      ],
+      "note": null,
+      "bot": "ملخص طلبك:\n• قميص قطن (أبيض / M) × 3 = 180.00 ILS\nالمجموع: 180.00 ILS\nالتوصيل (نابلس): 10.00 ILS\nالإجمالي: 190.00 ILS\nالعنوان: نابلس رفيديا\nالهاتف: 0599444555\nبتأكد الطلب؟",
+      "bot_action": "summary",
+      "ms": 10117,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-21",
+      "turn": 3,
+      "customer": "أكد",
+      "staff": "تم ✓",
+      "expected": [
+        "order_placed"
+      ],
+      "note": null,
+      "bot": "تم تأكيد طلبك ✓\nرقم الطلب: #5\nالإجمالي: 190.00 ILS\nرح نتواصل معك على 0599444555 لترتيب التوصيل. شكراً إلك!\nتابع حالة طلبك هون: http://localhost:5173/track/1f1b8de63d9742a88a8af113c12b7b1f",
+      "bot_action": "order_placed",
+      "ms": 12334,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-22",
+      "turn": 1,
+      "customer": "بدي عطر ورد 100ml",
+      "staff": "العطر 100ml بـ 85. لوين التوصيل؟",
+      "expected": [
+        "ask"
+      ],
+      "note": null,
+      "bot": "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان.",
+      "bot_action": "ask",
+      "ms": 8431,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    },
+    {
+      "conversation": "arc-22",
+      "turn": 2,
+      "customer": "خلص بلاش، ألغي",
+      "staff": "تمام، ألغيت الطلب",
+      "expected": [
+        "answer"
+      ],
+      "note": null,
+      "bot": "تم إلغاء الطلب. إذا بدك تطلب إشي تاني أنا جاهز.",
+      "bot_action": "answer",
+      "ms": 6483,
+      "action_ok": true,
+      "facts_ok": true,
+      "missing": [],
+      "forbidden": [],
+      "passed": true
+    }
+  ]
+}

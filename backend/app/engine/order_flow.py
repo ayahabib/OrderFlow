@@ -29,7 +29,8 @@ from app.llm.edits import extract_edits
 from app.llm.extraction import analyze_message, clean_size
 from app.engine import qa, rules
 from app.services import delivery, escalation, order_totals, orders
-from app.services.product_matching import clarifying_question, match_item
+from app.services import product_matching
+from app.services.product_matching import OPTION_LABELS, clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
 
 CONFIRM_BUTTONS = [Button(id="confirm", title="تأكيد"), Button(id="edit", title="تعديل"), Button(id="cancel", title="إلغاء")]
@@ -87,6 +88,10 @@ class BotState(BaseModel):
     quoted_total: Decimal | None = None
     # The customer said this is a new order although it matches this earlier one (3.5).
     duplicate_ok_for: UUID | None = None
+    # The one product the last question was about, with its in-stock options, so a reply like
+    # "ازرق 32" right after the answer starts an order for it (archive eval 3.7).
+    asked_product: str | None = None
+    asked_options: dict[str, list[str]] = Field(default_factory=dict)
 
     @classmethod
     def load(cls, raw) -> "BotState":
@@ -126,7 +131,7 @@ _BUTTON_WORDS = {"تاكيد": "confirm", "اكد": "confirm", "confirm": "confi
                  "تعديل": "edit", "edit": "edit", "الغاء": "cancel", "cancel": "cancel"}
 _YES = {"نعم", "اه", "ايوه", "ايوا", "اكيد", "تمام", "ماشي", "موافق", "yes", "ok", "اوكي"}
 _NO = {"لا", "no", "بلاش", "مش"}
-_FILLER = {"بدي", "بدنا", "مقاس", "المقاس", "لون", "اللون", "و", "بس", "يعني", "خليه", "خليها", "حجم", "الحجم", "please"}
+_FILLER = {"خلص", "طيب", "بدي", "بدنا", "مقاس", "المقاس", "لون", "اللون", "و", "بس", "يعني", "خليه", "خليها", "حجم", "الحجم", "please"}
 # Feminine/colloquial colors -> the normalized masculine form used in options.
 _COLOR_FORMS = {"حمرا": "احمر", "حمراء": "احمر", "زرقا": "ازرق", "زرقاء": "ازرق", "سودا": "اسود",
                 "سوداء": "اسود", "بيضا": "ابيض", "بيضاء": "ابيض", "خضرا": "اخضر", "خضراء": "اخضر"}
@@ -263,6 +268,7 @@ async def _decline_area(ctx: Context) -> Outcome:
 
 async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
     notes: list[str] = []
+    asked, state.asked_product = state.asked_product, None   # good for the very next message only
 
     # 0. Hard rule 5: complaint, discount, allergy, "talk to a person"... the bot never continues alone.
     rule = rules.keyword_rule(text)
@@ -288,6 +294,11 @@ async def handle(ctx: Context, state: BotState, text: str) -> Outcome:
     handled = await _answer_pending_deterministically(ctx, state, text, notes)
     if handled is not None:
         return handled
+    if asked and not state.pending:
+        picked = parse_options(text, state.asked_options)
+        if picked:
+            state.queue.append(QueuedItem(product_text=asked, **picked))
+            return await _advance(ctx, state, notes)
 
     # 3. LLM.
     if ctx.llm is None:
@@ -393,12 +404,23 @@ async def _answer_question(ctx: Context, state: BotState, text: str, analysis) -
     reply, rule = await qa.answer(ctx, text, analysis.items)
     if rule:
         return await _escalate(ctx, state, text, rule)
+    if len(analysis.items) == 1 and not state.pending:
+        await _remember_asked_product(ctx, state, analysis.items[0])
     # Keep an order in progress going: repeat what we were waiting for.
     if state.pending:
         return Outcome(_reply(f"{reply.text}\n\n{state.pending.question}", _pending_buttons(state.pending)), state)
     if state.mode == "awaiting_confirmation":
         return Outcome(_reply(f"{reply.text}\n\nطلبك جاهز، بدك أأكده؟", CONFIRM_BUTTONS), state)
     return Outcome(reply, state)
+
+
+async def _remember_asked_product(ctx: Context, state: BotState, item) -> None:
+    """After answering about one product, keep it (and its in-stock options) for the next message."""
+    m = await match_item(ctx.conn, ctx.store_id, item.product_text, item.color, item.size, 1)
+    if m.product_id and m.status in ("matched", "needs_variant", "variant_unavailable"):
+        options = await product_matching.in_stock_options(ctx.conn, ctx.store_id, m.product_id)
+        if options:
+            state.asked_product, state.asked_options = m.product_name, options
 
 
 def _pending_buttons(pending: Pending) -> list[Button]:
@@ -530,8 +552,19 @@ async def _advance(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         question = clarifying_question(m)
         if m.status == "matched":  # not enough stock
             if not m.stock_quantity:
-                notes.append(question)
-                continue
+                # Sold out: keep the product and offer the options still in stock, like staff do
+                # (archive eval 3.7). Nothing left at all -> say so and drop it.
+                options = await product_matching.in_stock_options(ctx.conn, ctx.store_id, m.product_id)
+                if not options:
+                    notes.append(question)
+                    continue
+                offer = "؛ ".join(f"{OPTION_LABELS[k]}: {'، '.join(v)}" for k, v in options.items())
+                state.pending = Pending(
+                    kind="variant", question=f"{question} المتوفر منه: {offer}. أي واحد بدك؟",
+                    item=q.model_copy(update={"product_text": m.product_name, "color": None, "size": None}),
+                    missing=list(options), option_values=options,
+                )
+                return Outcome(_reply(_with_notes(notes, state.pending.question)), state)
             item = DraftItem(variant_id=m.variant_id, product_id=m.product_id, product_name=m.product_name,
                              variant_name=m.variant_name, quantity=q.quantity, notes=q.notes)
             state.pending = Pending(kind="stock", question=question, stock_item=item, available=m.stock_quantity)

@@ -1,0 +1,992 @@
+{
+  "eval": "extraction",
+  "model": "gpt-5.4-mini",
+  "split": "test",
+  "run_at": "2026-11-23_153305",
+  "messages": 20,
+  "llm_errors": 0,
+  "summary": {
+    "intent": {
+      "correct": 20,
+      "total": 20,
+      "accuracy": 1.0
+    },
+    "product_text": {
+      "correct": 14,
+      "total": 14,
+      "accuracy": 1.0
+    },
+    "color": {
+      "correct": 14,
+      "total": 14,
+      "accuracy": 1.0
+    },
+    "size": {
+      "correct": 14,
+      "total": 14,
+      "accuracy": 1.0
+    },
+    "quantity": {
+      "correct": 14,
+      "total": 14,
+      "accuracy": 1.0
+    },
+    "item_count": {
+      "correct": 19,
+      "total": 19,
+      "accuracy": 1.0
+    },
+    "address_text": {
+      "correct": 19,
+      "total": 19,
+      "accuracy": 1.0
+    },
+    "phone": {
+      "correct": 19,
+      "total": 19,
+      "accuracy": 1.0
+    },
+    "wants_to_confirm": {
+      "correct": 19,
+      "total": 19,
+      "accuracy": 1.0
+    },
+    "full_message": {
+      "correct": 19,
+      "total": 19,
+      "accuracy": 1.0
+    }
+  },
+  "details": [
+    {
+      "id": "ext-002",
+      "message": "بدي اتنين فستان ازرق ميديم",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "فستان",
+            "color": "أزرق",
+            "size": "M",
+            "quantity": 2,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "فستان",
+            "color": "أزرق",
+            "size": "M",
+            "quantity": 2,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-004",
+      "message": "بدي قميص ابيض M وبنطلون جينز ازرق 32",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "قميص",
+            "color": "أبيض",
+            "size": "M",
+            "quantity": 1,
+            "notes": null
+          },
+          {
+            "product_text": "بنطلون جينز",
+            "color": "أزرق",
+            "size": "32",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "قميص",
+            "color": "أبيض",
+            "size": "M",
+            "quantity": 1,
+            "notes": null
+          },
+          {
+            "product_text": "بنطلون جينز",
+            "color": "أزرق",
+            "size": "32",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true,
+          true
+        ],
+        "color": [
+          true,
+          true
+        ],
+        "size": [
+          true,
+          true
+        ],
+        "quantity": [
+          true,
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-006",
+      "message": "بدي شنطة",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "شنطة",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "شنطة",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-008",
+      "message": "ممكن فستان صيفي؟",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "فستان صيفي",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "فستان صيفي",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-010",
+      "message": "بدي بنطلون جينز اسود 32",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "بنطلون جينز",
+            "color": "أسود",
+            "size": "32",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "بنطلون جينز",
+            "color": "أسود",
+            "size": "32",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-012",
+      "message": "بدي ٢ عطر ورد ٥٠ مل وشال",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "عطر ورد",
+            "color": null,
+            "size": "50ml",
+            "quantity": 2,
+            "notes": null
+          },
+          {
+            "product_text": "شال",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "عطر ورد",
+            "color": null,
+            "size": "50ml",
+            "quantity": 2,
+            "notes": null
+          },
+          {
+            "product_text": "شال",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true,
+          true
+        ],
+        "color": [
+          true,
+          true
+        ],
+        "size": [
+          true,
+          true
+        ],
+        "quantity": [
+          true,
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-014",
+      "message": "بدي حقيبة جلد وبدي تغليف هدية",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "حقيبة جلد",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": "تغليف هدية"
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "حقيبة جلد",
+            "color": null,
+            "size": null,
+            "quantity": 1,
+            "notes": "تغليف هدية"
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-016",
+      "message": "ابغى قميص اسود M ثلاث قطع",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "قميص",
+            "color": "أسود",
+            "size": "M",
+            "quantity": 3,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "قميص",
+            "color": "أسود",
+            "size": "M",
+            "quantity": 3,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-018",
+      "message": "العنوان رام الله البيرة",
+      "expected_intent": "order",
+      "expected": {
+        "items": [],
+        "address_text": "رام الله البيرة",
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": "رام الله البيرة",
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-020",
+      "message": "تمام ثبت الطلب",
+      "expected_intent": "confirm",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": true
+      },
+      "predicted": {
+        "intent": "confirm",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": true
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-022",
+      "message": "اوكي اعتمد الطلب",
+      "expected_intent": "confirm",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": true
+      },
+      "predicted": {
+        "intent": "confirm",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": true
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-024",
+      "message": "خلص مش بدي",
+      "expected_intent": "cancel",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "cancel",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-026",
+      "message": "خليهم 3 بدل 2",
+      "expected_intent": "edit_order",
+      "expected": null,
+      "predicted": {
+        "intent": "edit_order",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true
+      }
+    },
+    {
+      "id": "ext-028",
+      "message": "شو اوقات الدوام؟",
+      "expected_intent": "question",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "question",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-030",
+      "message": "في مقاسات اكبر من L؟",
+      "expected_intent": "question",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "question",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-032",
+      "message": "شكرا كتير",
+      "expected_intent": "other",
+      "expected": {
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "other",
+        "sensitive_reason": null,
+        "items": [],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [],
+        "color": [],
+        "size": [],
+        "quantity": [],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-034",
+      "message": "بدي ثلاث شالات",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "شال",
+            "color": null,
+            "size": null,
+            "quantity": 3,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "شال",
+            "color": null,
+            "size": null,
+            "quantity": 3,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-036",
+      "message": "بدي حذاء رياضي ابيض ٤١",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "حذاء رياضي",
+            "color": "أبيض",
+            "size": "41",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "حذاء رياضي",
+            "color": "أبيض",
+            "size": "41",
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-038",
+      "message": "بدي جينز ازرق",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "جينز",
+            "color": "أزرق",
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "جينز",
+            "color": "أزرق",
+            "size": null,
+            "quantity": 1,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    },
+    {
+      "id": "ext-040",
+      "message": "بدي فستانين احمر M",
+      "expected_intent": "order",
+      "expected": {
+        "items": [
+          {
+            "product_text": "فستان",
+            "color": "أحمر",
+            "size": "M",
+            "quantity": 2,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "predicted": {
+        "intent": "order",
+        "sensitive_reason": null,
+        "items": [
+          {
+            "product_text": "فستان",
+            "color": "أحمر",
+            "size": "M",
+            "quantity": 2,
+            "notes": null
+          }
+        ],
+        "address_text": null,
+        "phone": null,
+        "wants_to_confirm": false
+      },
+      "score": {
+        "intent": true,
+        "product_text": [
+          true
+        ],
+        "color": [
+          true
+        ],
+        "size": [
+          true
+        ],
+        "quantity": [
+          true
+        ],
+        "item_count": true,
+        "address_text": true,
+        "phone": true,
+        "wants_to_confirm": true,
+        "full_message": true
+      }
+    }
+  ]
+}

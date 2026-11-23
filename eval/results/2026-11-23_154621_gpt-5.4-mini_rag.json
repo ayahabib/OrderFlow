@@ -1,0 +1,154 @@
+{
+  "eval": "rag",
+  "model": "gpt-5.4-mini",
+  "embed_model": "text-embedding-3-small",
+  "threshold": 0.2,
+  "answered_correctly": 1.0,
+  "escalated_unanswerable": 1.0,
+  "details": [
+    {
+      "id": "rag-01",
+      "kind": "answerable",
+      "question": "لإيمتى فاتحين اليوم؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "منفتحين من الساعة 10 الصبح لحد 8 المسا، وكل يوم ما عدا الجمعة.",
+      "best": 0.3945499974934222
+    },
+    {
+      "id": "rag-02",
+      "kind": "answerable",
+      "question": "بتفتحوا يوم الجمعة؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "لا، المحل ما بيفتح يوم الجمعة.",
+      "best": 0.4711620496222239
+    },
+    {
+      "id": "rag-03",
+      "kind": "answerable",
+      "question": "امتى بتوصلني الطلبية؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "التوصيل بيوصل خلال يوم أو يومين عمل من تأكيد الطلب.",
+      "best": 0.33134503687585054
+    },
+    {
+      "id": "rag-04",
+      "kind": "answerable",
+      "question": "اذا ما عجبني الفستان بقدر ارجعه؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "إي، فيك ترجع القطعة خلال 3 أيام من الاستلام إذا ما انلبست ومعها الكرتونة.",
+      "best": 0.2419270649596825
+    },
+    {
+      "id": "rag-05",
+      "kind": "answerable",
+      "question": "طلع المقاس صغير، بقدر ابدله؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "إي، بتقدر تبدّل المقاس مجانًا خلال أسبوع إذا القطعة بحالتها الأصلية.",
+      "best": 0.522993461643007
+    },
+    {
+      "id": "rag-06",
+      "kind": "answerable",
+      "question": "بتقبلوا دفع كاش؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "أيوه، الدفع كاش عند الاستلام.",
+      "best": 0.6287616653905445
+    },
+    {
+      "id": "rag-07",
+      "kind": "answerable",
+      "question": "في عندكم تحويل بنكي؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "إي، فيك تدفع بتحويل على تطبيق البنك قبل التوصيل.",
+      "best": 0.5394113123189572
+    },
+    {
+      "id": "rag-08",
+      "kind": "answerable",
+      "question": "وين موقعكم بالزبط؟",
+      "ok": true,
+      "outcome": "answered",
+      "answer": "المحل بنابلس، شارع رفيديا، جنب صيدلية الشفاء.",
+      "best": 0.32529719404421914
+    },
+    {
+      "id": "rag-20",
+      "kind": "unanswerable",
+      "question": "في ضمان ع الشنطة؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.31138019464683375
+    },
+    {
+      "id": "rag-21",
+      "kind": "unanswerable",
+      "question": "بتعملوا تفصيل حسب المقاس؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.5392985860786005
+    },
+    {
+      "id": "rag-22",
+      "kind": "unanswerable",
+      "question": "عندكم فرع بعمّان؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.35345265354961286
+    },
+    {
+      "id": "rag-23",
+      "kind": "unanswerable",
+      "question": "بتقبلوا الدفع بالفيزا اونلاين؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.5653022681274177
+    },
+    {
+      "id": "rag-24",
+      "kind": "unanswerable",
+      "question": "القماش قطن ولا بوليستر؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "similarity 0.16 < 0.2",
+      "best": 0.15547614951969094
+    },
+    {
+      "id": "rag-25",
+      "kind": "unanswerable",
+      "question": "بتفتحوا بالعيد؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.36725378856696816
+    },
+    {
+      "id": "rag-26",
+      "kind": "unanswerable",
+      "question": "شو رقم واتساب المحل؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.4405812565474788
+    },
+    {
+      "id": "rag-27",
+      "kind": "unanswerable",
+      "question": "بتغلفوا هدايا؟",
+      "ok": true,
+      "outcome": "escalated",
+      "why": "NOT_FOUND",
+      "best": 0.29183414555625103
+    }
+  ]
+}

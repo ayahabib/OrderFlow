@@ -64,3 +64,43 @@ Fix idea: when the asked variant is sold out, keep the product and ask which in-
 - Synthetic chats written for this task; the bot's wording isn't scored, only actions and facts.
 - The cases were written before the run and not tuned afterwards. Fixing the two causes above would
   need re-running this eval and the extraction eval (prompt change).
+
+## After the fixes (same day)
+
+Raw results: `2026-11-23_154602_gpt-5.4-mini_archive.json`. The 22 chats were not changed.
+
+| measure | first run | after fixes |
+|---|---|---|
+| turns scored | 38 | 41 (fewer early handoffs) |
+| **turn pass** | 89.5% | **95.1%** (39/41) |
+| same action as staff | 89.5% | 95.1% |
+| same key facts | 92.1% | 97.6% |
+| must-handoff turns handed over | 100% | **100%** |
+| chats fully passed | 86.4% | 90.9% (20/22) |
+
+What changed:
+1. **Product questions answered from the catalog.** The extraction prompt now also gives the product a
+   question is about ("قديش سعر الشنطة؟"). The catalog answer is used only when the question is about
+   price, availability, colors or sizes (`rules.is_catalog_question`, keywords in code); anything else
+   about a product (warranty, material, embroidery) still goes to store info or the owner.
+   After a question about one product, a reply that is only options ("ازرق 32") starts an order for it.
+2. **Sold-out option keeps the product.** The bot lists the options still in stock and asks which one;
+   a product with nothing left is still dropped with a note.
+
+Checks after the change:
+- Extraction eval: dev 100% (19/19), test 100% (19/19). The prompt change first moved "صيفي" from the
+  product name into notes on ext-003 (dev); a rule that product words never go in notes fixed it.
+  Annotation rule changed: questions that name a product now expect that product in `items`
+  (`eval/README.md`, ext-027 updated).
+- Escalation eval: recall 100% (20/20), 0 false positives. Before the `is_catalog_question` gate, the
+  prompt change alone dropped recall to 95% ("في ضمان ع الحقيبة؟" answered with the bag's price), and the
+  archive chat arc-17 (embroidery) was answered with a price instead of going to the owner.
+- RAG eval: 8/8 answered, 8/8 handed over.
+- Intermediate result files from those in-between runs were deleted; they don't match committed code.
+
+Still failing:
+- arc-03#1 "عندكم جينز؟ بدي واحد": the bot gives the same facts as the staff (150, colors, sizes) as an
+  answer, not a question, so the action differs; the next message continues the order as staff would.
+- arc-06 "لإيمتى فاتحين اليوم؟": handed to the owner in this run (answered in the first run and in both RAG
+  runs; this code path didn't change). Likely the model's NOT_FOUND on "اليوم", since the bot doesn't know
+  today's weekday (known gap). Safe outcome, nothing invented.

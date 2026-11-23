@@ -89,6 +89,21 @@ def keyword_rule(text: str) -> Rule | None:
     return None
 
 
+# Words of a question the catalog can answer: price, availability, colors, sizes (task 3.7).
+# Anything else about a product (warranty, material, washing) is store info or the owner's.
+_CATALOG_WORDS = {"قديش", "بقديش", "بكم", "بكام", "كم", "باقي", "بتبيعوا", "بتبيعو", "بتبيع"}
+_CATALOG_STEMS = ("سعر", "اسعار", "عند", "متوفر", "متاح", "موجود", "لون", "الوان", "مقاس", "حجم")
+
+
+def is_catalog_question(text: str) -> bool:
+    """True when a product question asks only what the catalog knows (code, not the LLM)."""
+    for word in _prepare(text).split():
+        bare = word[2:] if word.startswith("ال") and len(word) > 4 else word
+        if word in _CATALOG_WORDS or any(w.startswith(_CATALOG_STEMS) for w in (word, bare)):
+            return True
+    return False
+
+
 def llm_rule(analysis: MessageAnalysis) -> Rule | None:
     """Escalation the LLM's reading implies: a sensitive reason, or a question with no order in it.
 
@@ -120,6 +135,8 @@ def decide(text: str, analysis: MessageAnalysis | None, item_limit: int, total_l
     rule = llm_rule(analysis)
     if rule:
         return rule
+    if analysis.intent == "question" and not is_catalog_question(text):
+        return "not_in_data"   # names a product but asks something the catalog doesn't know
     if exceeds_quantity_limits(analysis.items, item_limit, total_limit):
         return "large_order"
     return None

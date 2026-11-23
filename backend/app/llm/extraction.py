@@ -38,7 +38,10 @@ sensitive_reason (null unless clearly present):
 - human_requested: wants to talk to a person/employee/owner.
 - order_status: asks where their existing order is or when it arrives.
 
-items (only for products the customer wants to order now; [] otherwise):
+items: products the customer wants to order now, AND the product a question is about \
+(price, availability, colors, sizes: "قديش سعر الشنطة؟", "في عندكم كوتشيات؟", "بتبيعوا نظارات شمس؟"), \
+so the store can answer from its catalog. [] when no product is named ("في مقاسات اكبر؟", \
+opening hours, delivery, policies).
 - product_text: the product as the customer wrote it, WITHOUT quantity, color and size. Make it \
 singular ("قمصان"->"قميص", "فستانين"->"فستان"), remove the article "ال". Do NOT fix spelling \
 ("فسطان" stays "فسطان"); matching is done later.
@@ -47,7 +50,8 @@ singular ("قمصان"->"قميص", "فستانين"->"فستان"), remove the 
 digits ("٤٢"->"42"), volume like "50ml". null if none.
 - quantity: whole number. 1 if not mentioned. "اتنين/تنين"=2, "ثلاث/تلاتة"=3, "نص دزينة"=6, \
 dual nouns ("فستانين")=2, "زوج كوتشي" (a pair of shoes)=1.
-- notes: free notes that don't change stock (gift wrap, "بدون علبة"). null if none.
+- notes: free notes that don't change stock (gift wrap, "بدون علبة"). null if none. Words that \
+describe the product itself ("صيفي", "جلد", "رياضي", "قطن") are part of product_text, never notes.
 
 If the store's previous message is shown, use it only to understand short answers \
 (e.g. the store asked for the size and the customer wrote "L"): extract from the customer message only.

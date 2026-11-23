@@ -104,6 +104,13 @@ async def active_variants(conn: asyncpg.Connection, store_id: UUID, product_id: 
     return await _variants(conn, store_id, product_id)
 
 
+async def in_stock_options(conn: asyncpg.Connection, store_id: UUID, product_id: UUID) -> dict[str, list[str]]:
+    """Colors/sizes of the product's variants that are in stock (empty when nothing is left, or no options)."""
+    in_stock = [v for v in await _variants(conn, store_id, product_id) if v["stock_quantity"] > 0]
+    keys = [k for k in ("color", "size") if any(k in v["options"] for v in in_stock)]
+    return {k: vals for k, vals in _option_values(in_stock, keys).items() if vals}
+
+
 def pick_variant(variants: list[dict], color: str | None, size: str | None) -> tuple[Status, list[dict], list[str]]:
     """Filter variants by the given options. Returns (status, remaining variants, options still to ask)."""
     if not variants:

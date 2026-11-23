@@ -19,6 +19,7 @@ from app.db import knowledge as kb_db
 from app.llm.client import LLMError
 from app.llm.qa import answer_from_passages
 from app.llm.schemas import ExtractedItem
+from app.engine.rules import is_catalog_question
 from app.services import delivery, pricing
 from app.services.product_matching import OPTION_LABELS, clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
@@ -152,8 +153,9 @@ async def _knowledge_answer(ctx, text: str) -> str | None:
 
 async def answer(ctx, text: str, items: list[ExtractedItem]) -> tuple[OutboundMessage | None, str | None]:
     """(reply, None) when answered, or (None, rule) to escalate with that rule."""
-    if items:
+    if items and is_catalog_question(text):
         return OutboundMessage(text=await _product_answer(ctx, items)), None
+    # A product named, but asked about something else (warranty, material): store info or the owner.
     if is_delivery_question(text):
         reply = await _delivery_answer(ctx, text)
         return (OutboundMessage(text=reply), None) if reply else (None, "unknown_zone")

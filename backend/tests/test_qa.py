@@ -115,3 +115,28 @@ async def test_embedding_failure_hands_over(db_tx):
         r = await Chat(c, store).say("شو أوقات الدوام؟")
     assert r["content"]
     assert await escalations(db_tx, store) == [("llm_failure", "forced_rule")]
+
+
+@pytest.mark.db
+async def test_catalog_question_then_option_starts_the_order(db_tx):
+    """Archive eval 3.7: "do you have jeans?" is answered from the catalog, and "ازرق 32" right after orders it."""
+    store = await new_store(db_tx)
+    llm = ScriptedLLM({"عندكم جينز؟": analysis(intent="question", items=[item("جينز")])})
+    async with client_for(db_tx, llm=llm) as c:
+        chat = Chat(c, store)
+        r = await chat.say("عندكم جينز؟")
+        assert "بنطلون جينز" in r["content"] and "150" in r["content"]
+        r = await chat.say("ازرق 32")                       # read without the LLM
+        assert r["content"].startswith("لوين بدك التوصيل")
+    assert len(llm.calls) == 1 and await escalations(db_tx, store) == []
+    assert "أزرق / 32" in (await conversation(db_tx, store))["bot_state"]
+
+
+@pytest.mark.db
+async def test_product_question_outside_the_catalog_goes_to_owner(db_tx):
+    store = await new_store(db_tx)
+    llm = ScriptedLLM({"في ضمان ع الحقيبة؟": analysis(intent="question", items=[item("حقيبة")])})
+    async with client_for(db_tx, llm=llm) as c:
+        r = await Chat(c, store).say("في ضمان ع الحقيبة؟")
+    assert "90" not in r["content"]                         # no price answer for a warranty question
+    assert [rule for rule, _ in await escalations(db_tx, store)] == ["not_in_data"]

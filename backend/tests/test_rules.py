@@ -100,3 +100,15 @@ def test_decide_order():
     assert decide("بدي فستان", None, 10, 20) == "llm_failure"
     assert decide("بدي 30 قميص", analysis(items=[item(30)]), 10, 20) == "large_order"
     assert decide("بدي قميص", analysis(items=[item(1)]), 10, 20) is None
+
+
+def test_catalog_questions_are_price_stock_colors_sizes_only():
+    from app.engine.rules import is_catalog_question
+    for text in ["قديش سعر الشنطة؟", "عندكم ساعات يد؟", "في مقاسات اكبر من L؟", "شو الالوان الموجودة للقميص؟",
+                 "بكم الفستان", "الجينز متوفر؟"]:
+        assert is_catalog_question(text), text
+    for text in ["في ضمان ع الحقيبة؟", "الحذاء من شو مصنوع؟", "بتعملوا تطريز اسم عالقميص؟"]:
+        assert not is_catalog_question(text), text
+    # A product question that isn't about the catalog needs store data (escalation eval semantics).
+    assert decide("في ضمان ع الحقيبة؟", analysis(intent="question", items=[item(1)]), 10, 20) == "not_in_data"
+    assert decide("قديش سعر الشنطة؟", analysis(intent="question", items=[item(1)]), 10, 20) is None
