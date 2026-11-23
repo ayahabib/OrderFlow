@@ -174,3 +174,37 @@ def test_schema_has_no_price_fields():
     """Hard rule 1: the LLM output can't carry prices, totals, stock or fees."""
     fields = set(MessageAnalysis.model_fields) | set(ExtractedItem.model_fields)
     assert not {f for f in fields if any(w in f for w in ("price", "total", "fee", "stock"))}
+
+
+# --- function calling (owner stock chat, 3.3) ---------------------------------
+
+def tool_completion(name=None, arguments="{}"):
+    calls = [SimpleNamespace(function=SimpleNamespace(name=name, arguments=arguments))] if name else None
+    message = SimpleNamespace(tool_calls=calls, refusal=None, content="ignored free text")
+    return SimpleNamespace(choices=[SimpleNamespace(message=message)],
+                           usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5))
+
+
+async def test_call_tool_returns_validated_arguments():
+    from app.llm.owner_tools import TOOLS, ProposeStockAdjustment, pick_tool
+    args = '{"product_text": "فستان", "color": "أحمر", "size": "M", "change": -5, "set_to": null}'
+    fake = FakeOpenAI(tool_completion("propose_stock_adjustment", args))
+    result = await pick_tool(make_llm(fake), "نقّص الفستان الأحمر M بمقدار 5")
+    assert isinstance(result, ProposeStockAdjustment) and result.change == -5
+    sent = fake.calls[0]
+    assert [t["function"]["name"] for t in sent["tools"]] == list(TOOLS)
+    assert "الأحمر M بمقدار 5" in sent["messages"][1]["content"] and "بمقدار 5" not in sent["messages"][0]["content"]
+
+
+async def test_call_tool_none_when_no_tool_picked():
+    from app.llm.owner_tools import pick_tool
+    assert await pick_tool(make_llm(FakeOpenAI(tool_completion())), "مرحبا") is None
+
+
+async def test_call_tool_bad_arguments_retry_then_fail():
+    from app.llm.owner_tools import pick_tool
+    fake = FakeOpenAI(tool_completion("propose_stock_adjustment", "{not json"),
+                      tool_completion("unknown_tool", "{}"))
+    with pytest.raises(LLMError):
+        await pick_tool(make_llm(fake), "x")
+    assert len(fake.calls) == 2

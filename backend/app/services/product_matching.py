@@ -99,6 +99,11 @@ async def _variants(conn: asyncpg.Connection, store_id: UUID, product_id: UUID) 
     return variants
 
 
+async def active_variants(conn: asyncpg.Connection, store_id: UUID, product_id: UUID) -> list[dict]:
+    """A product's active variants with options and stock (used by the owner stock chat)."""
+    return await _variants(conn, store_id, product_id)
+
+
 def pick_variant(variants: list[dict], color: str | None, size: str | None) -> tuple[Status, list[dict], list[str]]:
     """Filter variants by the given options. Returns (status, remaining variants, options still to ask)."""
     if not variants:

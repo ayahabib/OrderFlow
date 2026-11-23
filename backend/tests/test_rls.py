@@ -15,7 +15,7 @@ pytestmark = pytest.mark.db
 STORE_TABLES = [
     "store_channels", "products", "product_variants", "inventory_movements",
     "delivery_zones", "customers", "conversations", "messages", "orders",
-    "order_items", "escalations", "knowledge_base", "offers",
+    "order_items", "escalations", "knowledge_base", "offers", "owner_pending_actions",
 ]
 
 

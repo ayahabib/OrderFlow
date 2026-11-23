@@ -42,6 +42,7 @@ stores ──┬── store_channels
 | `orders` / `order_items` | الطلبات وتفاصيلها |
 | `escalations` | الأسئلة المحولة لصاحب المتجر وجوابه |
 | `knowledge_base` | الأسئلة/الأجوبة والمعلومات الي البوت بيرد منها (RAG) |
+| `owner_pending_actions` | تعديلات المخزون المقترحة من شات صاحب المتجر، بتستنى التأكيد (3.3) |
 
 ### الفرق بين Variant وخيار نصي (notes)
 - **Variant**: صفة بتأثر على المخزون (لون، مقاس). كل variant إله كمية. مثال: "فستان أحمر M".
@@ -329,6 +330,29 @@ create index kb_store_idx on knowledge_base (store_id);
 
 > **ملاحظة:** البعد `768` لأننا بنطلب من OpenAI `text-embedding-3-small` بـ `dimensions=768` (الافتراضي 1536). لو غيّرتي الموديل أو البعد، لازم migration جديدة للعمود والدالة `match_knowledge`.
 
+### 3.8 شات المخزون: الإجراءات المعلّقة (3.3)
+
+الـ LLM بس بيقترح. الاقتراح بينحفظ هون `pending`، والمخزون بيتغيّر بس من endpoint التأكيد (ARCHITECTURE.md قسم 8).
+
+```sql
+create type pending_action_status as enum ('pending', 'confirmed', 'cancelled');
+
+create table owner_pending_actions (
+  id           uuid primary key default gen_random_uuid(),
+  store_id     uuid not null references stores(id) on delete cascade,
+  variant_id   uuid not null references product_variants(id) on delete cascade,
+  change       integer check (change <> 0),          -- "نقّص 5" = -5
+  set_to       integer check (set_to >= 0),          -- "خلّيه 7" = 7
+  status       pending_action_status not null default 'pending',
+  created_at   timestamptz not null default now(),
+  expires_at   timestamptz not null default now() + interval '15 minutes',
+  resolved_at  timestamptz,
+  constraint owner_pending_actions_one_amount check (num_nonnulls(change, set_to) = 1)
+);
+```
+
+عند التأكيد: نفس الـ transaction بتقفل الـ variant، بتحسب الكمية الجديدة من المخزون **الحالي** (لو إجا طلب بالنص)، بترفض لو النتيجة سالبة، وبتكتب `inventory_movements` بـ `reason = 'chat_edit'`.
+
 ## 4. رفع Excel مع الـ Variants
 
 الأعمدة المقبولة:
@@ -433,7 +457,7 @@ begin
   foreach t in array array[
     'store_channels','products','product_variants','inventory_movements',
     'delivery_zones','customers','conversations','messages','orders',
-    'order_items','escalations','knowledge_base','offers'
+    'order_items','escalations','knowledge_base','offers','owner_pending_actions'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

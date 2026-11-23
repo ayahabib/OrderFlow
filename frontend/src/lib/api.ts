@@ -406,3 +406,23 @@ export type ProductStock = { product_id: string; name: string; variants_count: n
 
 export const getLowStock = () => api<LowStockItem[]>('/api/reports/low-stock')
 export const getStockByProduct = () => api<ProductStock[]>('/api/reports/stock')
+
+// --- owner stock chat (3.3): propose, then confirm ---
+
+export type PendingStockAction = {
+  id: string
+  product_name: string
+  variant_name: string
+  old_stock: number
+  new_stock: number
+  expires_at: string
+}
+export type OwnerChatReply = { reply: string; action: PendingStockAction | null }
+export type ConfirmedStockAction = { reply: string; product_name: string; variant_name: string; old_stock: number; new_stock: number }
+
+export const sendOwnerChat = (text: string) =>
+  api<OwnerChatReply>('/api/owner-chat', { method: 'POST', body: JSON.stringify({ text }) })
+export const confirmOwnerAction = (id: string) =>
+  api<ConfirmedStockAction>(`/api/owner-chat/confirm/${id}`, { method: 'POST' })
+export const cancelOwnerAction = (id: string) =>
+  api<null>(`/api/owner-chat/cancel/${id}`, { method: 'POST' })

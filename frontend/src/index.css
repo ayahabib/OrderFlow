@@ -474,3 +474,8 @@ details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y:
 /* Stock alerts: the name takes the room, the two numbers stay compact. */
 .stock-table { table-layout: auto; }
 .stock-table th:nth-child(n+2), .stock-table td:nth-child(n+2) { width: 1%; white-space: nowrap; }
+
+/* ===================== owner stock chat (3.3) ===================== */
+.stock-chat .chat-log { height: 320px; min-height: 220px; }
+.stock-chat h2 { padding: 16px 18px 0; }
+.stock-chat > .muted { padding: 0 18px 10px; margin: 0; }

@@ -275,7 +275,7 @@ class ChannelAdapter(Protocol):
 صاحب المتجر: "نقّص كمية الفستان الأحمر M بمقدار 5"
       │
       ▼
-LLM يستدعي أداة:  propose_stock_adjustment(product_text, variant_hint, delta)
+LLM يستدعي أداة:  propose_stock_adjustment(product_text, color, size, change | set_to)
       │
       ▼
 الكود: يطابق المنتج/الـ variant بـ SQL → يرجع "إجراء معلّق" (pending action) بدون تنفيذ
@@ -289,6 +289,7 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 ```
 
 الأدوات المقترحة: `search_products`، `propose_stock_adjustment`، `propose_price_change`، `get_stock_status`، `get_sales_summary` (قراءة فقط).
+المنفّذ بالمهمة 3.3: `propose_stock_adjustment` و `get_stock_status`. الإجراء المعلّق بينحفظ بـ `owner_pending_actions` وبتنتهي صلاحيته بعد 15 دقيقة.
 **ممنوع** أي أداة تعدّل مباشرة بدون خطوة تأكيد.
 
 ## 9. الـ API لصاحب المتجر (مختصر)
@@ -308,6 +309,7 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 | GET | `/api/reports/sales`, `/api/reports/low-stock`, `/api/reports/forecast` | التقارير |
 | POST | `/api/owner-chat` | شات المخزون (يرجع pending action) |
 | POST | `/api/owner-chat/confirm/{action_id}` | تنفيذ الإجراء المعلّق |
+| POST | `/api/owner-chat/cancel/{action_id}` | إلغاء الإجراء المعلّق |
 | GET/POST | `/api/channels` | ربط القنوات |
 
 كل الـ routes بتتحقق من JWT (Supabase) وبتجيب `store_id` من المستخدم، **مش من الـ request body**.

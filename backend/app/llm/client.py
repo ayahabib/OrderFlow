@@ -39,6 +39,9 @@ class LLM(Protocol):
 
     async def structured(self, *, system: str, user: str, schema: type[T], task: str) -> T: ...
 
+    async def call_tool(self, *, system: str, user: str, tools: dict[str, type[BaseModel]],
+                        task: str) -> BaseModel | None: ...
+
 
 class _NoParsedOutput(Exception):
     """The response had no parsed object (empty or unparseable content)."""
@@ -98,10 +101,42 @@ class OpenAILLM:
         return schema.model_validate(message.parsed.model_dump()), completion.usage
 
     async def structured(self, *, system: str, user: str, schema: type[T], task: str) -> T:
+        return await self._with_retry(task, lambda: self._call_once(system, user, schema))
+
+    async def _tool_once(self, system: str, user: str, tools: dict[str, type[BaseModel]]):
+        completion = await self.client.chat.completions.parse(
+            model=self.model,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            tools=[openai.pydantic_function_tool(model, name=name) for name, model in tools.items()],
+            tool_choice="auto",
+            timeout=self.timeout_s,
+        )
+        message = completion.choices[0].message
+        if message.refusal:
+            raise LLMError("refused", "the model refused to answer")
+        calls = message.tool_calls or []
+        if not calls:
+            return None, completion.usage  # no tool fits: the caller shows a fixed help text
+        call = calls[0]
+        schema = tools.get(call.function.name)
+        if schema is None:
+            raise _NoParsedOutput()
+        # Validate the arguments ourselves: never trust the shape of model output.
+        return schema.model_validate_json(call.function.arguments), completion.usage
+
+    async def call_tool(self, *, system: str, user: str, tools: dict[str, type[BaseModel]],
+                        task: str) -> BaseModel | None:
+        """Function calling: the arguments of the first tool the model picked, or None if it picked none.
+
+        The model's free text is ignored on purpose; replies are built by code.
+        """
+        return await self._with_retry(task, lambda: self._tool_once(system, user, tools))
+
+    async def _with_retry(self, task: str, call):
         for attempt in (1, 2):
             started = time.perf_counter()
             try:
-                result, usage = await self._call_once(system, user, schema)
+                result, usage = await call()
             except LLMError as exc:
                 self._log(task, attempt, started, f"error:{exc.kind}")
                 raise

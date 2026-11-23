@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import BarList from '../components/BarList'
 import EditableCell, { validateQuantity } from '../components/EditableCell'
+import StockChat from '../components/StockChat'
 import { getLowStock, getStockByProduct, updateVariant, type LowStockItem, type ProductStock } from '../lib/api'
 
 const REFRESH_MS = 60_000
@@ -87,6 +88,8 @@ export default function StockPage() {
           )}
         </div>
       )}
+
+      <StockChat onChanged={load} />
 
       <div className="card wide chart-panel">
         <h2>المخزون حسب المنتج (قطعة)</h2>

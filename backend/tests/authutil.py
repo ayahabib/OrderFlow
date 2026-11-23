@@ -57,11 +57,21 @@ class ScriptedLLM:
     Unscripted texts come back as intent "other" with nothing extracted. Never calls OpenAI.
     """
 
-    def __init__(self, script: dict | None = None, answers: dict | None = None, edits: dict | None = None):
+    def __init__(self, script: dict | None = None, answers: dict | None = None, edits: dict | None = None,
+                 tools: dict | None = None):
         self.script = script or {}
         self.answers = answers or {}   # question text -> answer for the QA call (2.2); missing = NOT_FOUND
         self.edits = edits or {}       # edit message -> list of EditOp dicts (2.6); missing = no operations
+        self.tools = tools or {}       # owner chat text -> tool arguments model (3.3); missing = no tool
         self.calls: list[dict] = []
+
+    async def call_tool(self, *, system, user, tools, task):
+        self.calls.append({"user": user, "task": task})
+        text = user.rsplit("Owner message:\n<<<\n", 1)[1].rsplit("\n>>>", 1)[0]
+        result = self.tools.get(text)
+        if isinstance(result, Exception):
+            raise result
+        return result
 
     async def structured(self, *, system, user, schema, task):
         self.calls.append({"user": user, "task": task})
