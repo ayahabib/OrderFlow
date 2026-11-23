@@ -62,7 +62,7 @@ class QueuedItem(BaseModel):
 
 class Pending(BaseModel):
     """The one question the bot is waiting on."""
-    kind: Literal["variant", "product", "stock", "address", "zone", "phone"]
+    kind: Literal["variant", "product", "stock", "address", "zone", "phone", "duplicate"]
     question: str
     item: QueuedItem | None = None
     missing: list[str] = Field(default_factory=list)              # variant: options to ask
@@ -70,6 +70,7 @@ class Pending(BaseModel):
     candidates: list[str] = Field(default_factory=list)            # product: which one
     stock_item: DraftItem | None = None                            # stock: offer to take `available`
     available: int | None = None
+    duplicate_of: UUID | None = None                               # duplicate: the earlier order (3.5)
 
 
 class BotState(BaseModel):
@@ -84,6 +85,8 @@ class BotState(BaseModel):
     # Total shown in the last summary (computed by code). Confirm re-computes and, if it
     # differs (price/offer changed meanwhile), shows a fresh summary instead of ordering.
     quoted_total: Decimal | None = None
+    # The customer said this is a new order although it matches this earlier one (3.5).
+    duplicate_ok_for: UUID | None = None
 
     @classmethod
     def load(cls, raw) -> "BotState":
@@ -356,7 +359,7 @@ async def _answer_question(ctx: Context, state: BotState, text: str, analysis) -
 
 
 def _pending_buttons(pending: Pending) -> list[Button]:
-    return YES_NO_BUTTONS if pending.kind == "stock" else []
+    return YES_NO_BUTTONS if pending.kind in ("stock", "duplicate") else []
 
 
 async def _answer_pending_deterministically(ctx: Context, state: BotState, text: str, notes: list[str]) -> Outcome | None:
@@ -372,6 +375,17 @@ async def _answer_pending_deterministically(ctx: Context, state: BotState, text:
         answer = yes_no(text)
         if answer is not None:
             return await _answer_stock(ctx, state, answer, notes)
+    elif p.kind == "duplicate":
+        answer = yes_no(text)
+        if answer is None and button_action(text) == "confirm":
+            answer = True
+        if answer is True:
+            state.pending, state.duplicate_ok_for = None, p.duplicate_of
+            return await _confirm(ctx, state, notes)
+        if answer is False:
+            return Outcome(_reply("تمام، ما سجّلنا طلب جديد. طلبك الأول لسّا قائم. إذا بدك إشي تاني أنا جاهز."),
+                           _reset())
+        state.pending = None  # something else (an edit, a question): carry on normally
     elif p.kind == "zone":
         zone = delivery.find_zone(text, await delivery.active_zones(ctx.conn, ctx.store_id))
         if zone:
@@ -609,11 +623,23 @@ async def _confirm(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         notes.append("انتبه: الأسعار أو العروض تغيّرت من آخر ملخص. هاد الملخص المحدّث:")
         return await _summary(ctx, state, notes)
 
+    # Same items as one of this customer's orders from the last 24 h: ask before saving (3.5).
+    earlier = await orders.find_recent_duplicate(
+        ctx.conn, ctx.store_id, ctx.customer_id, [(line.variant_id, line.quantity) for line in totals.lines])
+    if earlier and earlier.id != state.duplicate_ok_for:
+        state.pending = Pending(
+            kind="duplicate", duplicate_of=earlier.id,
+            question=(f"انتبه: طلبت نفس هالطلب من شوي (طلب #{earlier.order_number}). "
+                      "هاد طلب جديد زيادة على الأول؟"),
+        )
+        return Outcome(_reply(_with_notes(notes, state.pending.question), YES_NO_BUTTONS), state)
+
     try:
         placed = await orders.place_order(
             ctx.conn, ctx.store_id, customer_id=ctx.customer_id, conversation_id=ctx.conversation_id,
             totals=totals, zone_id=state.zone_id, address=state.address, phone=state.phone,
             notes={i.variant_id: i.notes for i in state.items},
+            possible_duplicate_of=earlier.id if earlier else None,
         )
     except orders.InsufficientStockError as short:
         # Someone bought it meanwhile. Nothing was saved; offer what's left.

@@ -251,6 +251,8 @@ create index order_items_order_idx on order_items (order_id);
 
 > مع العروض (3.7): `order_items.unit_price` = السعر بعد العرض، ومنضيف `list_price numeric(10,2)` (السعر قبل العرض) و `offer_id uuid references offers(id) on delete set null` كـ snapshot. و`orders` بيضل فيه `delivery_fee` (صفر لو انطبق توصيل مجاني) + `free_delivery_offer_id`.
 
+> الطلبات المكررة (3.5): `orders.possible_duplicate_of uuid references orders(id) on delete set null`. لما العميل يأكد نفس المنتجات والكميات متل طلب إله من آخر 24 ساعة (مش ملغي)، البوت بيسأله قبل الحفظ. لو قال إنه طلب جديد، بينحفظ مع رابط للطلب الأول، وصفحة الطلبات بتعرض "ممكن مكرر".
+
 ### 3.7 العروض
 
 ```sql

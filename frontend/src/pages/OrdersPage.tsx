@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { listOrders, updateOrderStatus, type Order, type OrderFilters, type OrderStatus } from '../lib/api'
+import IncompleteOrders from '../components/IncompleteOrders'
 import { useStore } from '../store/StoreProvider'
 
 const STATUS: Record<OrderStatus, { label: string; cls: string }> = {
@@ -96,6 +97,8 @@ export default function OrdersPage() {
         )}
       </div>
 
+      <IncompleteOrders />
+
       {error && <p className="msg error" role="alert">{error}</p>}
       {actionError && <p className="msg error" role="alert">{actionError}</p>}
 
@@ -112,7 +115,14 @@ export default function OrdersPage() {
             <tbody>
               {orders.map((o) => (
                 <tr key={o.id} className={o.status === 'cancelled' ? 'inactive' : undefined}>
-                  <td><strong>#{o.order_number}</strong></td>
+                  <td>
+                    <strong>#{o.order_number}</strong>
+                    {o.duplicate_of_number && (
+                      <div><span className="badge warn" title={`العميل أكّد إنه طلب جديد، بس فيه نفس منتجات طلب #${o.duplicate_of_number} من آخر 24 ساعة`}>
+                        ممكن مكرر (#{o.duplicate_of_number})
+                      </span></div>
+                    )}
+                  </td>
                   <td>
                     {o.customer_name ?? <span className="muted">بدون اسم</span>}
                     {o.customer_phone && <div className="muted small" dir="ltr">{o.customer_phone}</div>}

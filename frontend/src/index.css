@@ -479,3 +479,7 @@ details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y:
 .stock-chat .chat-log { height: 320px; min-height: 220px; }
 .stock-chat h2 { padding: 16px 18px 0; }
 .stock-chat > .muted { padding: 0 18px 10px; margin: 0; }
+
+/* ===================== incomplete orders (3.5) ===================== */
+.incomplete-orders summary { cursor: pointer; }
+.incomplete-orders .table-wrap { margin-top: 12px; }

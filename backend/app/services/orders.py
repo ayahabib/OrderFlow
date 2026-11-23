@@ -6,6 +6,7 @@ One transaction:
 If any variant is short, the whole thing rolls back and nothing is saved.
 """
 
+from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
@@ -43,6 +44,7 @@ async def place_order(
     address: str | None,
     phone: str | None,
     notes: dict[UUID, str | None] | None = None,
+    possible_duplicate_of: UUID | None = None,
 ) -> PlacedOrder:
     """Save the order and deduct stock. Raises InsufficientStockError (after a full rollback)."""
     if not totals.lines or any(line.quantity <= 0 for line in totals.lines):
@@ -59,12 +61,13 @@ async def place_order(
             """
             insert into orders (store_id, order_number, customer_id, conversation_id, status,
                                 delivery_address, delivery_zone_id, delivery_fee, subtotal, total,
-                                free_delivery_offer_id)
-            values ($1, $2, $3, $4, 'new', $5, $6, $7, $8, $9, $10)
+                                free_delivery_offer_id, possible_duplicate_of)
+            values ($1, $2, $3, $4, 'new', $5, $6, $7, $8, $9, $10, $11)
             returning id
             """,
             store_id, number, customer_id, conversation_id, address, zone_id,
             totals.delivery_fee, totals.subtotal, totals.total, totals.free_delivery_offer_id,
+            possible_duplicate_of,
         )
 
         # Snapshots: names and prices as the customer saw them (DATABASE.md principle 6).
@@ -119,6 +122,41 @@ async def place_order(
 
 
 # --- status changes from the orders page (task 1.10) --------------------------------
+
+DUPLICATE_HOURS = 24
+
+
+@dataclass
+class RecentOrder:
+    id: UUID
+    order_number: int
+
+
+async def find_recent_duplicate(
+    conn: asyncpg.Connection, store_id: UUID, customer_id: UUID, lines: list[tuple[UUID, int]],
+) -> RecentOrder | None:
+    """The customer's newest order from the last DUPLICATE_HOURS hours (not cancelled) with exactly
+    the same items: same variants and quantities, in any order (task 3.5)."""
+    wanted = Counter((variant_id, qty) for variant_id, qty in lines)
+    rows = await conn.fetch(
+        """
+        select o.id, o.order_number,
+               array(select i.variant_id from order_items i
+                      where i.order_id = o.id and i.store_id = o.store_id order by i.id) as variant_ids,
+               array(select i.quantity from order_items i
+                      where i.order_id = o.id and i.store_id = o.store_id order by i.id) as quantities
+          from orders o
+         where o.store_id = $1 and o.customer_id = $2 and o.status <> 'cancelled'
+           and o.created_at >= now() - make_interval(hours => $3)
+         order by o.created_at desc
+        """,
+        store_id, customer_id, DUPLICATE_HOURS,
+    )
+    for r in rows:
+        if Counter(zip(r["variant_ids"], r["quantities"])) == wanted:
+            return RecentOrder(r["id"], r["order_number"])
+    return None
+
 
 # Forward only, plus cancel; delivered and cancelled are final (owner's decision), so
 # stock can never be returned twice.

@@ -232,6 +232,7 @@ export type Order = {
   subtotal: string
   total: string
   notes: string | null
+  duplicate_of_number: number | null   // same items as this earlier order, within 24 h (3.5)
   items: { product_name: string; variant_name: string | null; quantity: number; unit_price: string; list_price: string | null; notes: string | null }[]
   allowed_next: OrderStatus[]
   created_at: string
@@ -443,3 +444,17 @@ export type ForecastItem = {
 export type ForecastReport = { window_days: number; within_days: number; items: ForecastItem[] }
 
 export const getForecast = (days: number) => api<ForecastReport>(`/api/reports/forecast?days=${days}`)
+
+// --- incomplete orders: drafts the customer left (3.5) ---
+
+export type StalledDraft = {
+  conversation_id: string
+  channel: string
+  customer_name: string | null
+  customer_phone: string | null
+  last_message_at: string
+  items: string[]
+  missing: string[]
+}
+
+export const listIncompleteOrders = () => api<StalledDraft[]>('/api/orders/incomplete')

@@ -299,6 +299,7 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 | POST | `/api/products/import` | رفع Excel (معاينة ثم تأكيد) |
 | GET/PATCH | `/api/products`, `/api/variants/{id}` | عرض وتعديل المنتجات والمخزون |
 | GET | `/api/orders` | جدول الطلبات (فلترة وبحث) |
+| GET | `/api/orders/incomplete` | طلبات ما كملت: مسودات وقف العميل عن الرد فيها أكتر من ساعتين (3.5) |
 | PATCH | `/api/orders/{id}/status` | تغيير حالة الطلب |
 | GET | `/api/conversations`, `/api/conversations/{id}/messages` | المحادثات |
 | POST | `/api/conversations/{id}/pause` / `/resume` | إيقاف/تشغيل البوت |
