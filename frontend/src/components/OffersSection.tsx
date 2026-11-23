@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import EditableCell, { validatePrice } from '../components/EditableCell'
+import EditableCell, { validatePrice } from './EditableCell'
 import {
-  createOffer, deleteOffer, listOffers, listProducts, updateOffer,
+  createOffer, deleteOffer, listOffers, updateOffer,
   type Offer, type OfferKind, type OfferStatus, type Product,
 } from '../lib/api'
 import { useStore } from '../store/StoreProvider'
@@ -143,21 +143,25 @@ function NewOfferForm({ products, onCreated, onCancel }: {
   )
 }
 
-export default function OffersPage() {
+/**
+ * Offers, as a section of the "products and prices" page. `onChanged` refreshes the product
+ * table above, which shows each variant's offer price.
+ */
+export default function OffersSection({ products, onChanged }: { products: Product[]; onChanged: () => void }) {
   const { store } = useStore()
   const [offers, setOffers] = useState<Offer[] | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [showNew, setShowNew] = useState(false)
 
   useEffect(() => {
-    Promise.all([listOffers(), listProducts()])
-      .then(([o, p]) => { setOffers(o); setProducts(p) })
-      .catch((e) => setError((e as Error).message))
+    listOffers().then(setOffers).catch((e) => setError((e as Error).message))
   }, [])
 
-  const replace = (updated: Offer) => setOffers((list) => list?.map((o) => (o.id === updated.id ? updated : o)) ?? null)
+  const replace = (updated: Offer) => {
+    setOffers((list) => list?.map((o) => (o.id === updated.id ? updated : o)) ?? null)
+    onChanged()
+  }
 
   async function toggle(o: Offer) {
     setActionError(null)
@@ -174,19 +178,26 @@ export default function OffersPage() {
     try {
       await deleteOffer(o.id)
       setOffers((list) => list?.filter((x) => x.id !== o.id) ?? null)
+      onChanged()
     } catch (e) {
       setActionError((e as Error).message)
     }
   }
 
-  if (error) return <p className="msg error" role="alert">{error}</p>
-  if (!offers) return <p className="muted">جاري التحميل...</p>
   const currency = store?.currency ?? ''
+  if (error || !offers) {
+    return (
+      <section className="stack wide offers-section" id="offers">
+        <h2>العروض</h2>
+        {error ? <p className="msg error" role="alert">{error}</p> : <p className="muted">جاري التحميل...</p>}
+      </section>
+    )
+  }
 
   return (
-    <section className="stack wide">
+    <section className="stack wide offers-section" id="offers">
       <div className="row">
-        <h1>العروض</h1>
+        <h2>العروض</h2>
         <span className="spacer" />
         {!showNew && <button type="button" onClick={() => setShowNew(true)}>+ عرض جديد</button>}
       </div>
@@ -195,7 +206,7 @@ export default function OffersPage() {
         <NewOfferForm
           products={products}
           onCancel={() => setShowNew(false)}
-          onCreated={(o) => { setOffers((list) => [o, ...(list ?? [])]); setShowNew(false) }}
+          onCreated={(o) => { setOffers((list) => [o, ...(list ?? [])]); setShowNew(false); onChanged() }}
         />
       )}
       {actionError && <p className="msg error" role="alert">{actionError}</p>}

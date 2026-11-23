@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import ImportPanel from '../components/ImportPanel'
 import EditableCell, { validatePrice, validateQuantity } from '../components/EditableCell'
+import OffersSection from '../components/OffersSection'
 import { AddVariantForm, NewProductForm } from '../components/ProductForms'
 import {
   deleteProduct, deleteVariant, listProducts, updateProductPrice, updateVariant, type Product, type Variant,
@@ -35,6 +37,12 @@ export default function ProductsPage() {
   useEffect(() => {
     reload()
   }, [])
+
+  // The old /offers link lands here with #offers: scroll to that section once the page has loaded.
+  const location = useLocation()
+  useEffect(() => {
+    if (products && location.hash === '#offers') document.getElementById('offers')?.scrollIntoView()
+  }, [products, location.hash])
 
   const visible = useMemo(() => {
     if (!products) return []
@@ -98,7 +106,7 @@ export default function ProductsPage() {
   return (
     <section className="stack wide">
       <div className="row">
-        <h1>المنتجات</h1>
+        <h1>المنتجات والأسعار</h1>
         {products.length > 0 && <span className="muted">{products.length} منتج، {totalVariants} نسخة</span>}
         <span className="spacer" />
         {products.length > 0 && (
@@ -205,6 +213,8 @@ export default function ProductsPage() {
           {visible.length === 0 && <p className="muted">ما في نتائج لـ "{query}"</p>}
         </>
       )}
+
+      <OffersSection products={products} onChanged={reload} />
     </section>
   )
 }

@@ -72,9 +72,8 @@ export default function Layout() {
 
         <nav className="nav-group" aria-label="المتجر">
           <span>المتجر</span>
-          <NavLink to="/products">المنتجات</NavLink>
+          <NavLink to="/products">المنتجات والأسعار</NavLink>
           <NavLink to="/stock">المخزون <Count n={counts.lowStock} label="منتج قرّب يخلص أو خلصان" /></NavLink>
-          <NavLink to="/offers">العروض</NavLink>
           <NavLink to="/knowledge">معلومات المتجر</NavLink>
         </nav>
 

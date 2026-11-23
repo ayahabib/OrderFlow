@@ -5,7 +5,6 @@ import ConversationsPage from './pages/ConversationsPage'
 import CreateStorePage from './pages/CreateStorePage'
 import DashboardPage from './pages/DashboardPage'
 import KnowledgePage from './pages/KnowledgePage'
-import OffersPage from './pages/OffersPage'
 import OrdersPage from './pages/OrdersPage'
 import ProductsPage from './pages/ProductsPage'
 import LoginPage from './pages/LoginPage'
@@ -44,7 +43,7 @@ function Dashboard() {
         <Route path="/conversations/:id" element={<ConversationsPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/stock" element={<StockPage />} />
-        <Route path="/offers" element={<OffersPage />} />
+        <Route path="/offers" element={<Navigate to="/products#offers" replace />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/import" element={<Navigate to="/products" replace />} />
         <Route path="/simulator" element={<SimulatorPage />} />

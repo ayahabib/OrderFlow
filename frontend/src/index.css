@@ -500,3 +500,7 @@ details.table-view .table-wrap { margin-top: 8px; max-height: 260px; overflow-y:
 .track-items { margin: 0; padding-inline-start: 20px; }
 .track-totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 6px 0 0; }
 .track-totals dd { margin: 0; }
+
+/* Offers as a section of the products-and-prices page */
+.offers-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--rule); scroll-margin-top: 16px; }
+.offers-section h2 { margin: 0; }
