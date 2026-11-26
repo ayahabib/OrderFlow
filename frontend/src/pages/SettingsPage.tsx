@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import StoreForm from '../components/StoreForm'
 import TelegramChannel from '../components/TelegramChannel'
+import WhatsAppChannel from '../components/WhatsAppChannel'
 import TelegramLink from '../components/TelegramLink'
 import ZonesEditor from '../components/ZonesEditor'
 import { updateStore } from '../lib/api'
@@ -38,6 +39,14 @@ export default function SettingsPage() {
       </p>
       <div className="card wide">
         <ZonesEditor currency={store.currency} />
+      </div>
+
+      <h2 id="channel-whatsapp">قناة واتساب للعملاء</h2>
+      <p className="muted small">
+        عن طريق WhatsApp Cloud API الرسمي من Meta. العملاء بيراسلوا رقم المتجر، والبوت بيرد متل المحاكي بالظبط.
+      </p>
+      <div className="card wide narrow-block">
+        <WhatsAppChannel />
       </div>
 
       <h2 id="channel-telegram">قناة Telegram للعملاء</h2>

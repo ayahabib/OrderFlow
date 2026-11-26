@@ -18,6 +18,7 @@ const ACTION: Record<string, string> = {
   pause_bot: 'أوقف البوت على محادثة', resume_bot: 'رجّع البوت على محادثة', owner_reply: 'رد على عميل',
   answer_escalation: 'جاوب سؤال محوّل',
   connect_telegram: 'ربط بوت Telegram', disconnect_telegram: 'فصل بوت Telegram',
+  connect_whatsapp: 'ربط رقم واتساب', disconnect_whatsapp: 'فصل رقم واتساب',
   verify_link: 'ربط تنبيهات Telegram', unlink: 'فصل تنبيهات Telegram',
   confirm: 'أكّد تعديل مخزون بالشات', cancel: 'لغى تعديل مخزون بالشات',
   notify_waiting: 'بلّغ عملاء إنه منتج رجع',

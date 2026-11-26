@@ -17,7 +17,7 @@ import asyncpg
 Actor = Literal["owner", "bot", "system"]
 
 # Body keys never copied into the log: secrets, and free text that may hold customer data.
-SENSITIVE_KEYS = {"token", "bot_token", "password", "text", "answer", "content", "credentials", "code"}
+SENSITIVE_KEYS = {"token", "bot_token", "access_token", "password", "text", "answer", "content", "credentials", "code"}
 
 
 def _default(value):

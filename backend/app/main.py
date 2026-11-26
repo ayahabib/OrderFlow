@@ -9,6 +9,7 @@ from fastapi.responses import PlainTextResponse
 from app.api import assistant, audit, channels, conversations, customers, escalations, interests, knowledge, me, notifications, offers, orders, owner_chat, products, reports, stores, tracking, zones
 from app.config import get_settings
 from app.webhooks import telegram as telegram_webhook
+from app.webhooks import whatsapp as whatsapp_webhook
 from app.webhooks import web_chat
 from app.db.pool import create_pool
 from app.engine.reply_queue import ReplyQueue
@@ -65,6 +66,7 @@ def create_app(use_lifespan: bool = True) -> FastAPI:
     app.include_router(channels.router, dependencies=owner_writes)
     app.include_router(web_chat.router)
     app.include_router(telegram_webhook.router)
+    app.include_router(whatsapp_webhook.router)
     return app
 
 

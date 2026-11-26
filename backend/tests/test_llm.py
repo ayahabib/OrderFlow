@@ -119,6 +119,17 @@ def test_missing_configuration_is_a_clear_error():
     assert exc.value.kind == "not_configured"
 
 
+def test_optional_provider_for_the_chat_model():
+    """LLM_BASE_URL / LLM_API_KEY point the chat model at another OpenAI-compatible API; empty = OpenAI."""
+    base = dict(supabase_url="https://x.supabase.co", database_url="postgresql://unused",
+                openai_api_key="sk-openai", openai_model="some-model")
+    other = OpenAILLM(Settings(**base, llm_base_url="https://openrouter.ai/api/v1", llm_api_key="sk-or-test"))
+    assert str(other.client.base_url).startswith("https://openrouter.ai/api/v1")
+    assert other.client.api_key == "sk-or-test"
+    default = OpenAILLM(Settings(**base, llm_base_url="", llm_api_key=""))
+    assert "api.openai.com" in str(default.client.base_url) and default.client.api_key == "sk-openai"
+
+
 async def test_logs_never_contain_customer_text(caplog):
     fake = FakeOpenAI(api_error(openai.RateLimitError, 429), completion(analysis()))
     with caplog.at_level(logging.INFO, logger="app.llm.client"):

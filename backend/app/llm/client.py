@@ -71,14 +71,17 @@ def _classify(exc: Exception) -> tuple[ErrorKind, bool]:
 class OpenAILLM:
     def __init__(self, settings: Settings, *, client: openai.AsyncOpenAI | None = None,
                  timeout_s: float = DEFAULT_TIMEOUT_S, retry_delay_s: float = RETRY_DELAY_S):
-        if client is None and (settings.openai_api_key is None or not settings.openai_model):
+        # An empty LLM_API_KEY= / LLM_BASE_URL= line in .env means "not set".
+        api_key = settings.llm_api_key if settings.llm_api_key and settings.llm_api_key.get_secret_value() \
+            else settings.openai_api_key
+        if client is None and (api_key is None or not settings.openai_model):
             raise LLMError("not_configured", "OPENAI_API_KEY / OPENAI_MODEL are not set")
         self.model = settings.openai_model or "test-model"
         self.timeout_s = timeout_s
         self.retry_delay_s = retry_delay_s
         # max_retries=0: retries are ours (exactly one), so the total wait stays predictable.
         self.client = client or openai.AsyncOpenAI(
-            api_key=settings.openai_api_key.get_secret_value(), max_retries=0
+            api_key=api_key.get_secret_value(), base_url=settings.llm_base_url or None, max_retries=0
         )
 
     async def _call_once(self, system: str, user: str, schema: type[T]) -> tuple[T, object]:
@@ -171,7 +174,7 @@ def get_llm() -> LLM | None:
     key = (settings.openai_model, settings.openai_api_key.get_secret_value() if settings.openai_api_key else None)
     if key not in _cached:
         try:
-            _cached[key] = OpenAILLM(settings)
+            _cached[key] = OpenAILLM(settings, timeout_s=settings.llm_timeout_seconds)
         except LLMError:
             return None
     return _cached[key]

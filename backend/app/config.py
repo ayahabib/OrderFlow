@@ -23,10 +23,19 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     openai_model: str | None = None
     openai_embed_model: str = "text-embedding-3-small"
+    # Optional OpenAI-compatible provider for the chat model only (e.g. OpenRouter for a free test model).
+    # Unset = OpenAI. Embeddings always use OpenAI.
+    llm_base_url: str | None = None
+    llm_api_key: SecretStr | None = None
+    llm_timeout_seconds: float = 20.0   # per chat-model call; free/slow models may need more
 
     # Channels (used from tasks 1.5 / 1.13)
     channel_encryption_key: SecretStr | None = None
     telegram_webhook_secret: SecretStr | None = None
+    # WhatsApp Cloud API (task 5.1): one Meta app for the platform; each store connects its own number.
+    whatsapp_app_secret: SecretStr | None = None     # verifies X-Hub-Signature-256 on every webhook POST
+    whatsapp_verify_token: SecretStr | None = None   # answered once when Meta checks the webhook (GET)
+    whatsapp_graph_version: str = "v25.0"
     web_chat_secret: SecretStr | None = None  # signs web chat simulator session tokens
     public_base_url: str = "http://localhost:8000"
 

@@ -520,3 +520,20 @@ export type AuditEntry = {
 
 export const listAudit = (actor = '', offset = 0) =>
   api<AuditEntry[]>(`/api/audit?limit=100&offset=${offset}${actor ? `&actor=${actor}` : ''}`)
+
+// --- WhatsApp Cloud API channel (task 5.1) ---
+
+export type WhatsAppChannelStatus = {
+  connected: boolean
+  display_phone_number: string | null
+  verified_name: string | null
+  webhook_url: string
+  webhook_ready: boolean
+}
+
+export const getWhatsAppChannel = () => api<WhatsAppChannelStatus>('/api/channels/whatsapp')
+export const connectWhatsAppChannel = (phoneNumberId: string, accessToken: string) =>
+  api<WhatsAppChannelStatus>('/api/channels/whatsapp', {
+    method: 'POST', body: JSON.stringify({ phone_number_id: phoneNumberId, access_token: accessToken }),
+  })
+export const disconnectWhatsAppChannel = () => api<WhatsAppChannelStatus>('/api/channels/whatsapp', { method: 'DELETE' })

@@ -26,6 +26,17 @@ async def get_active_channel(conn: asyncpg.Connection, channel_id: UUID, channel
     )
 
 
+async def get_active_by_external_id(conn: asyncpg.Connection, channel: str, external_id: str) -> asyncpg.Record | None:
+    """WhatsApp: the store whose number received the message (phone_number_id from Meta's signed payload)."""
+    return await conn.fetchrow(
+        """
+        select id, store_id, external_id, credentials from store_channels
+         where channel = $1::channel_type and external_id = $2 and is_active and credentials is not null
+        """,
+        channel, external_id,
+    )
+
+
 async def external_id_taken(conn: asyncpg.Connection, channel: str, external_id: str, store_id: UUID) -> bool:
     """Is this bot/number already active for another store? (One webhook per bot.)"""
     return await conn.fetchval(
