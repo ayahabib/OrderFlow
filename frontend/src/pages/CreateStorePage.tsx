@@ -23,7 +23,7 @@ export default function CreateStorePage() {
           <h1>أهلاً! خلّينا ننشئ متجرك</h1>
           <p className="muted">بتقدر تعدّل هالمعلومات بعدين من صفحة الإعدادات.</p>
           <StoreForm
-            initial={{ name: '', phone: null, currency: 'ILS' }}
+            initial={{ name: '', phone: null, currency: 'ILS', phone_country_code: '970' }}
             submitLabel="التالي"
             onSubmit={async (input) => setCreated(await createStore(input))}
           />

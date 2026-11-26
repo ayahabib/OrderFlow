@@ -39,7 +39,7 @@ async def test_confirmation_link_tracking_page_and_status_question(db_tx):
 
         # "Where is my order?" is answered from the database, with the link; no escalation.
         r = (await chat.say("وين طلبي؟"))["content"]
-        assert "طلبك #1: قيد التجهيز والتوصيل" in r and token in r
+        assert "طلبك #1: قيد التجهيز" in r and token in r   # label since 3.11 (shipped is its own step)
     assert await escalations(db_tx, store) == []
     assert (await conversation(db_tx, store))["status"] == "bot"
 

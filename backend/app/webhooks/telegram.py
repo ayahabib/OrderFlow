@@ -21,6 +21,7 @@ from app.config import Settings, get_settings
 from app.db import channels as channels_db
 from app.db.pool import get_db, get_db_factory
 from app.engine import handler
+from app.engine.reply_queue import ReplyQueue, get_reply_queue
 from app.llm.client import get_llm
 from app.llm.embeddings import get_embedder
 from app.services.notifications import get_notifier
@@ -65,6 +66,7 @@ async def telegram_webhook(
     llm=Depends(get_llm),
     notifier=Depends(get_notifier),
     embedder=Depends(get_embedder),
+    queue: ReplyQueue = Depends(get_reply_queue),
 ) -> dict:
     try:
         expected = tg.webhook_secret(settings, channel_id)
@@ -101,6 +103,14 @@ async def telegram_webhook(
     )
     result = await handler.ingest(conn, msg)
     if result.bot_should_reply:
-        background.add_task(_respond_in_background, db_factory, llm, notifier, settings.dashboard_url, adapter,
-                            channel["store_id"], result.conversation_id, parsed.chat_id, parsed.text, embedder=embedder)
+        async def reply(text: str) -> None:
+            await _respond_in_background(db_factory, llm, notifier, settings.dashboard_url, adapter,
+                                         channel["store_id"], result.conversation_id, parsed.chat_id, text,
+                                         embedder=embedder)
+
+        # Typed messages wait a short pause so a split-up request is read as one (task 3.10);
+        # a button press is a complete answer, so it goes at once.
+        delay = 0 if parsed.callback_query_id else settings.chat_debounce_seconds
+        ticket = queue.add(result.conversation_id, parsed.text)
+        background.add_task(queue.run, result.conversation_id, ticket, delay, reply)
     return OK

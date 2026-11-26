@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.engine.order_flow import ASK_ADDRESS, ASK_PHONE, WELCOME, button_action, parse_options, parse_phone, yes_no
+from app.engine.order_flow import ASK_ADDRESS, ASK_NOTIFY, ASK_PHONE, WELCOME, button_action, parse_options, parse_phone, yes_no
 from app.llm.client import LLMError
 from app.llm.schemas import ExtractedItem
 from app.services.excel_import import plan_from_file
@@ -163,13 +163,19 @@ async def test_sold_out_option_offers_what_is_in_stock(db_tx):
 
 @pytest.mark.db
 async def test_product_sold_out_completely_is_dropped(db_tx):
+    """Nothing of it in stock: the bot says so and offers to tell them when it's back (3.12)."""
     store = await new_store(db_tx)
     await db_tx.execute("update product_variants set stock_quantity = 0 where store_id = $1 and product_id = "
                         "(select id from products where store_id = $1 and name = 'حقيبة جلد')", store)
     llm = ScriptedLLM({"بدي شنطة": analysis(items=[item("شنطة")])})
     async with client_for(db_tx, llm=llm) as c:
-        r = await Chat(c, store).say("بدي شنطة")
-    assert "خلص" in r["content"] and "شو بتحب تطلب" in r["content"]
+        chat = Chat(c, store)
+        r = await chat.say("بدي شنطة")
+        assert "خلص" in r["content"] and ASK_NOTIFY in r["content"]
+        assert [b["title"] for b in r["buttons"]] == ["نعم", "لا"]
+        r = await chat.say("لا")
+    assert "شو بتحب تطلب" in r["content"]
+    assert await db_tx.fetchval("select count(*) from customer_interests where store_id = $1", store) == 0
 
 
 @pytest.mark.db
@@ -314,7 +320,7 @@ async def test_cancel_resets_and_edit_reopens(db_tx):
     llm = ScriptedLLM({
         "بدي شنطة لنابلس 0599123456": analysis(items=[item("شنطة")], address_text="نابلس", phone="0599123456"),
         "زيد شال": analysis(intent="edit_order", items=[item("شال")]),
-    })
+    }, edits={"زيد شال": [{"op": "add_item", "product_text": "شال", "quantity": 1}]})   # edits read since 2.6
     async with client_for(db_tx, llm=llm) as c:
         chat = Chat(c, store)
         r = await chat.say("بدي شنطة لنابلس 0599123456")

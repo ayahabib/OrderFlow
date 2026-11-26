@@ -28,7 +28,7 @@ from app.llm.embeddings import Embedder
 from app.llm.edits import extract_edits
 from app.llm.extraction import analyze_message, clean_size
 from app.engine import qa, rules
-from app.services import delivery, escalation, order_totals, orders
+from app.services import delivery, escalation, interests, order_totals, orders
 from app.services import product_matching
 from app.services.product_matching import OPTION_LABELS, clarifying_question, match_item
 from app.utils.arabic import normalize_arabic, to_latin_digits
@@ -38,6 +38,9 @@ YES_NO_BUTTONS = [Button(id="yes", title="نعم"), Button(id="no", title="لا"
 
 WELCOME = "أهلاً فيك! شو بتحب تطلب؟ اكتبلي اسم المنتج واللون والمقاس."
 ASK_ADDRESS = "لوين بدك التوصيل؟ اكتبلي المدينة والعنوان."
+ASK_NOTIFY = "بتحب نخبرك أول ما يرجع؟"   # sold out with nothing else in stock (3.12)
+# Extra "yes" words for ASK_NOTIFY ("خبرني" = tell me).
+_NOTIFY_YES = {"خبرني", "خبروني", "بلغني", "بلغوني", "ابعتلي"}
 ASK_PHONE = "شو رقم تلفونك للتواصل؟"
 
 
@@ -63,13 +66,13 @@ class QueuedItem(BaseModel):
 
 class Pending(BaseModel):
     """The one question the bot is waiting on."""
-    kind: Literal["variant", "product", "stock", "address", "zone", "phone", "duplicate"]
+    kind: Literal["variant", "product", "stock", "address", "zone", "phone", "duplicate", "notify"]
     question: str
     item: QueuedItem | None = None
     missing: list[str] = Field(default_factory=list)              # variant: options to ask
     option_values: dict[str, list[str]] = Field(default_factory=dict)
     candidates: list[str] = Field(default_factory=list)            # product: which one
-    stock_item: DraftItem | None = None                            # stock: offer to take `available`
+    stock_item: DraftItem | None = None                            # stock: offer to take `available`; notify: the sold-out item
     available: int | None = None
     duplicate_of: UUID | None = None                               # duplicate: the earlier order (3.5)
 
@@ -220,9 +223,11 @@ def _reset() -> BotState:
 
 STATUS_FOR_CUSTOMER = {
     "new": "استلمناه وبيتجهّز قريباً",
-    "in_progress": "قيد التجهيز والتوصيل",
+    "in_progress": "قيد التجهيز",
+    "shipped": "انشحن وعالطريق إلك",
     "delivered": "تم التوصيل",
     "cancelled": "ملغي",
+    "returned": "مرتجع",
 }
 STATUS_DAYS = 30   # orders older than this aren't "where is my order?" material
 STATUS_MAX = 3
@@ -258,8 +263,10 @@ async def _order_status(ctx: Context, state: BotState, text: str) -> Outcome:
 
 async def _decline_area(ctx: Context) -> Outcome:
     """Out of our delivery area: say so, list where we deliver, close the order. No owner handoff (owner's choice)."""
-    names = "، ".join(z.name for z in await delivery.active_zones(ctx.conn, ctx.store_id))
-    text = (f"للأسف ما منوصّل على هالمنطقة. منوصّل بس على: {names}.\n"
+    zones = await delivery.active_zones(ctx.conn, ctx.store_id)
+    names = "، ".join(z.name for z in zones if not z.is_pickup)
+    pickup = " أو بتقدر تستلمه من المحل" if delivery.pickup_zone(zones) else ""
+    text = (f"للأسف ما منوصّل على هالمنطقة. منوصّل بس على: {names}{pickup}.\n"
             "إذا عندك عنوان بمنطقة منهم، ابعتلي طلبك من جديد.")
     return Outcome(_reply(text), _reset())
 
@@ -424,7 +431,7 @@ async def _remember_asked_product(ctx: Context, state: BotState, item) -> None:
 
 
 def _pending_buttons(pending: Pending) -> list[Button]:
-    return YES_NO_BUTTONS if pending.kind in ("stock", "duplicate") else []
+    return YES_NO_BUTTONS if pending.kind in ("stock", "duplicate", "notify") else []
 
 
 async def _answer_pending_deterministically(ctx: Context, state: BotState, text: str, notes: list[str]) -> Outcome | None:
@@ -440,6 +447,20 @@ async def _answer_pending_deterministically(ctx: Context, state: BotState, text:
         answer = yes_no(text)
         if answer is not None:
             return await _answer_stock(ctx, state, answer, notes)
+    elif p.kind == "notify":
+        answer = yes_no(text)
+        if answer is None and any(w in _NOTIFY_YES for w in _tokens(text)):
+            answer = True
+        state.pending = None
+        if answer is True and p.stock_item:
+            # Saved only after the customer said yes (TASKS.md 3.12).
+            await interests.register(ctx.conn, ctx.store_id, ctx.customer_id, p.stock_item.variant_id)
+            notes.append(f"تمام، رح نخبرك أول ما يرجع {_label(p.stock_item)}.")
+            return await _advance(ctx, state, notes)
+        if answer is False:
+            notes.append("تمام.")
+            return await _advance(ctx, state, notes)
+        # Something else (a new request, a question): carry on normally.
     elif p.kind == "duplicate":
         answer = yes_no(text)
         if answer is None and button_action(text) == "confirm":
@@ -451,6 +472,12 @@ async def _answer_pending_deterministically(ctx: Context, state: BotState, text:
             return Outcome(_reply("تمام، ما سجّلنا طلب جديد. طلبك الأول لسّا قائم. إذا بدك إشي تاني أنا جاهز."),
                            _reset())
         state.pending = None  # something else (an edit, a question): carry on normally
+    elif p.kind == "address":
+        # "I'll pick it up" (3.15): no address needed, the pickup zone's fee is 0.
+        pickup = delivery.pickup_zone(await delivery.active_zones(ctx.conn, ctx.store_id))
+        if pickup and delivery.wants_pickup(text):
+            state.address, state.zone_id, state.zone_name, state.pending = pickup.name, pickup.id, pickup.name, None
+            return await _advance(ctx, state, notes)
     elif p.kind == "zone":
         zone = delivery.find_zone(text, await delivery.active_zones(ctx.conn, ctx.store_id))
         if zone:
@@ -556,8 +583,12 @@ async def _advance(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
                 # (archive eval 3.7). Nothing left at all -> say so and drop it.
                 options = await product_matching.in_stock_options(ctx.conn, ctx.store_id, m.product_id)
                 if not options:
-                    notes.append(question)
-                    continue
+                    # Nothing of it left: offer to tell them when it's back (3.12).
+                    sold_out = DraftItem(variant_id=m.variant_id, product_id=m.product_id, product_name=m.product_name,
+                                         variant_name=m.variant_name, quantity=q.quantity)
+                    state.pending = Pending(kind="notify", question=f"{question} {ASK_NOTIFY}", stock_item=sold_out)
+                    return Outcome(_reply(_with_notes(notes, state.pending.question), _pending_buttons(state.pending)),
+                                   state)
                 offer = "؛ ".join(f"{OPTION_LABELS[k]}: {'، '.join(v)}" for k, v in options.items())
                 state.pending = Pending(
                     kind="variant", question=f"{question} المتوفر منه: {offer}. أي واحد بدك؟",
@@ -595,8 +626,11 @@ async def _advance(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         return await _escalate(ctx, state, _describe(state), "large_order")
 
     if not state.address:
-        state.pending = Pending(kind="address", question=ASK_ADDRESS)
-        return Outcome(_reply(_with_notes(notes, ASK_ADDRESS)), state)
+        question = ASK_ADDRESS
+        if delivery.pickup_zone(await delivery.active_zones(ctx.conn, ctx.store_id)):
+            question = f"{ASK_ADDRESS} أو اكتب «استلام» إذا بدك تستلمه من المحل."
+        state.pending = Pending(kind="address", question=question)
+        return Outcome(_reply(_with_notes(notes, question)), state)
 
     if not state.zone_id:
         zones = await delivery.active_zones(ctx.conn, ctx.store_id)
@@ -608,8 +642,9 @@ async def _advance(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         if zone:
             state.zone_id, state.zone_name = zone.id, zone.name
         else:
-            names = "، ".join(z.name for z in zones)
-            question = f"لأي منطقة التوصيل؟ منوصّل على: {names}."
+            names = "، ".join(z.name for z in zones if not z.is_pickup)
+            pickup = " أو اكتب «استلام» لتستلمه من المحل" if delivery.pickup_zone(zones) else ""
+            question = f"لأي منطقة التوصيل؟ منوصّل على: {names}{pickup}."
             state.pending = Pending(kind="zone", question=question)
             return Outcome(_reply(_with_notes(notes, question)), state)
 
@@ -670,8 +705,11 @@ async def _summary(ctx: Context, state: BotState, notes: list[str]) -> Outcome:
         if line.offer_name:
             text += f" (عرض «{line.offer_name}»: {line.unit_price:.2f} بدل {line.list_price:.2f} للقطعة)"
         lines.append(text)
+    pickup = await ctx.conn.fetchval(
+        "select is_pickup from delivery_zones where id = $1 and store_id = $2", state.zone_id, ctx.store_id)
     delivery_line = (
-        f"التوصيل ({state.zone_name}): مجاني (عرض «{totals.free_delivery_offer}»)"
+        "الاستلام: من المحل، بدون أجرة توصيل" if pickup   # 3.15
+        else f"التوصيل ({state.zone_name}): مجاني (عرض «{totals.free_delivery_offer}»)"
         if totals.free_delivery_offer else f"التوصيل ({state.zone_name}): {_money(totals.delivery_fee, c)}"
     )
     summary = "\n".join([

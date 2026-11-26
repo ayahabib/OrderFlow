@@ -11,7 +11,7 @@ from typing import Annotated
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.api.auth import get_current_store_id
@@ -85,6 +85,7 @@ async def chat(
 @router.post("/confirm/{action_id}", response_model=ConfirmOut)
 async def confirm(
     action_id: UUID,
+    request: Request,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> ConfirmOut:
@@ -93,6 +94,8 @@ async def confirm(
     except owner_chat.ActionError as exc:
         raise HTTPException(ERROR_STATUS[exc.code], str(exc)) from None
     label = owner_chat.label(done.product_name, done.variant_name)
+    request.state.audit = {"before": {"stock_quantity": done.old_stock, "product": label},
+                           "after": {"stock_quantity": done.new_stock, "product": label}}   # 3.14
     return ConfirmOut(reply=f"تم. {label}: الكمية صارت {done.new_stock} (كانت {done.old_stock}).",
                       product_name=done.product_name, variant_name=done.variant_name,
                       old_stock=done.old_stock, new_stock=done.new_stock)

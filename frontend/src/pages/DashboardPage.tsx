@@ -6,7 +6,7 @@ import RunOutForecast from '../components/RunOutForecast'
 import { getSalesReport, type SalesReport } from '../lib/api'
 
 const PERIODS = [7, 30, 90]
-const REFRESH_MS = 60_000
+const REFRESH_MS = 10_000   // 3.15; skipped while the tab is hidden
 const dayFmt = new Intl.DateTimeFormat('ar-u-nu-latn', { day: 'numeric', month: 'numeric' })
 const longDayFmt = new Intl.DateTimeFormat('ar-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' })
 const num = new Intl.NumberFormat('ar-u-nu-latn', { maximumFractionDigits: 2 })
@@ -44,7 +44,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load()
-    const timer = window.setInterval(load, REFRESH_MS)   // new orders show up without reloading
+    const timer = window.setInterval(() => { if (!document.hidden) load() }, REFRESH_MS)   // new orders show up without reloading
     window.addEventListener('focus', load)
     return () => {
       window.clearInterval(timer)
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               <span className="label">
                 {report.new_orders + report.in_progress_orders === 0
                   ? 'ما في طلبات مفتوحة'
-                  : `طلبات مفتوحة: ${report.new_orders} جديد، ${report.in_progress_orders} قيد التنفيذ`}
+                  : `طلبات مفتوحة: ${report.new_orders} جديد، ${report.in_progress_orders} قيد التجهيز أو الشحن`}
               </span>
             </Link>
           </div>

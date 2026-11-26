@@ -24,6 +24,7 @@ class ZoneCreate(BaseModel):
     name: ZoneName
     fee: Fee
     is_active: bool = True
+    is_pickup: bool = False   # pickup from the store (3.15): no address, fee always 0
 
 
 class ZoneUpdate(BaseModel):
@@ -31,6 +32,7 @@ class ZoneUpdate(BaseModel):
     name: ZoneName | None = None
     fee: Fee | None = None
     is_active: bool | None = None
+    is_pickup: bool | None = None
 
 
 class ZoneOut(BaseModel):
@@ -38,6 +40,19 @@ class ZoneOut(BaseModel):
     name: str
     fee: Decimal
     is_active: bool
+    is_pickup: bool
+
+
+async def _ensure_one_pickup(conn, store_id: UUID) -> None:
+    """Checked before writing, so the error is clear (the unique index still guards races)."""
+    if any(z["is_pickup"] for z in await db.list_zones(conn, store_id)):
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="في خيار استلام من المحل واحد بس")
+
+
+def _conflict(exc: asyncpg.UniqueViolationError) -> str:
+    if "pickup" in (exc.constraint_name or ""):
+        return "في خيار استلام من المحل واحد بس"
+    return "المنطقة موجودة من قبل"
 
 
 def _clean_name(name: str) -> str:
@@ -68,10 +83,13 @@ async def create_zone(
 ) -> dict:
     name = _clean_name(body.name)
     await _ensure_unique(conn, store_id, name)
+    if body.is_pickup:
+        await _ensure_one_pickup(conn, store_id)
+    fee = Decimal("0") if body.is_pickup else body.fee   # pickup never costs delivery
     try:
-        return await db.insert_zone(conn, store_id, name, body.fee, body.is_active)
-    except asyncpg.UniqueViolationError:  # a parallel request created the same name
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="المنطقة موجودة من قبل")
+        return await db.insert_zone(conn, store_id, name, fee, body.is_active, body.is_pickup)
+    except asyncpg.UniqueViolationError as exc:  # same name in a parallel request, or a second pickup
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=_conflict(exc))
 
 
 @router.patch("/{zone_id}", response_model=ZoneOut)
@@ -82,18 +100,25 @@ async def update_zone(
     conn: asyncpg.Connection = Depends(get_db),
 ) -> dict:
     changes = body.model_dump(exclude_unset=True)
-    for required in ("name", "fee", "is_active"):
+    for required in ("name", "fee", "is_active", "is_pickup"):
         if required in changes and changes[required] is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{required} لا يمكن أن يكون فارغاً")
-    if await db.get_zone(conn, store_id, zone_id) is None:
+    current = await db.get_zone(conn, store_id, zone_id)
+    if current is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="المنطقة غير موجودة")
+    if changes.get("is_pickup") and not current["is_pickup"]:
+        await _ensure_one_pickup(conn, store_id)
+    if changes.get("is_pickup", current["is_pickup"]):
+        if changes.get("fee", 0) != 0:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="الاستلام من المحل أجرته 0 دايماً")
+        changes["fee"] = Decimal("0")
     if "name" in changes:
         changes["name"] = _clean_name(changes["name"])
         await _ensure_unique(conn, store_id, changes["name"], except_id=zone_id)
     try:
         return await db.update_zone(conn, store_id, zone_id, changes)
-    except asyncpg.UniqueViolationError:
-        raise HTTPException(status.HTTP_409_CONFLICT, detail="المنطقة موجودة من قبل")
+    except asyncpg.UniqueViolationError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=_conflict(exc))
 
 
 @router.delete("/{zone_id}", status_code=status.HTTP_204_NO_CONTENT)

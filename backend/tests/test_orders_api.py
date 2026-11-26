@@ -33,7 +33,7 @@ async def test_list_shows_order_with_items_customer_and_totals(db_tx):
     assert (o["customer_name"], o["customer_phone"], o["zone_name"]) == ("سارة أحمد", "0599123456", "نابلس")
     assert o["delivery_address"] == "نابلس، شارع فيصل"
     assert [(i["variant_name"], i["quantity"], i["unit_price"]) for i in o["items"]] == [("أبيض", 2, "50.00"), ("أسود", 1, "30.00")]
-    assert o["allowed_next"] == ["in_progress", "delivered", "cancelled"]
+    assert o["allowed_next"] == ["in_progress", "shipped", "delivered", "cancelled"]
     assert o["id"] == str(placed.order_id)
 
 
@@ -70,13 +70,15 @@ async def test_status_moves_forward_and_persists(db_tx):
     placed = await order(db_tx, s, [(s["a"], 1)])
     async with client_for(db_tx) as c:
         r = await c.patch(f"/api/orders/{placed.order_id}/status", headers=h, json={"status": "in_progress"})
-        assert (r.status_code, r.json()["status"], r.json()["allowed_next"]) == (200, "in_progress", ["delivered", "cancelled"])
+        assert (r.status_code, r.json()["status"], r.json()["allowed_next"]) == (200, "in_progress", ["shipped", "delivered", "cancelled"])
+        r = await c.patch(f"/api/orders/{placed.order_id}/status", headers=h, json={"status": "shipped"})
+        assert (r.json()["status"], r.json()["allowed_next"]) == ("shipped", ["delivered", "cancelled"])
         r = await c.patch(f"/api/orders/{placed.order_id}/status", headers=h, json={"status": "delivered"})
-        assert (r.json()["status"], r.json()["allowed_next"]) == ("delivered", [])
+        assert (r.json()["status"], r.json()["allowed_next"]) == ("delivered", ["returned"])   # only a return now (3.11)
         listed = (await c.get("/api/orders", headers=h)).json()
         assert listed[0]["status"] == "delivered"
-        # Final: no going back, no cancelling a delivered order.
-        for back in ("new", "in_progress", "cancelled"):
+        # No going back, no cancelling a delivered order.
+        for back in ("new", "in_progress", "shipped", "cancelled"):
             r = await c.patch(f"/api/orders/{placed.order_id}/status", headers=h, json={"status": back})
             assert r.status_code == 409 and "تم التوصيل" in r.json()["detail"]
     assert await stock(db_tx, s["a"]) == 9                 # delivered: stock stays deducted
@@ -132,7 +134,7 @@ async def test_other_store_orders_are_invisible(db_tx):
     assert await stock(db_tx, other["a"]) == 9             # untouched
 
 
-@pytest.mark.parametrize("body", [{"status": "shipped"}, {"status": None}, {}, {"status": "cancelled", "store_id": str(uuid.uuid4())}])
+@pytest.mark.parametrize("body", [{"status": "lost"}, {"status": None}, {}, {"status": "cancelled", "store_id": str(uuid.uuid4())}])
 async def test_status_validation(db_tx, body):
     s, h = await setup(db_tx)
     placed = await order(db_tx, s, [(s["a"], 1)])
@@ -144,7 +146,7 @@ async def test_status_validation(db_tx, body):
 async def test_list_validation_and_login(db_tx):
     s, h = await setup(db_tx)
     async with client_for(db_tx) as c:
-        assert (await c.get("/api/orders", headers=h, params={"status": "shipped"})).status_code == 422
+        assert (await c.get("/api/orders", headers=h, params={"status": "lost"})).status_code == 422
         assert (await c.get("/api/orders", headers=h, params={"from": "yesterday"})).status_code == 422
         assert (await c.get("/api/orders", headers=h, params={"limit": 1000})).status_code == 422
         assert (await c.get("/api/orders")).status_code == 401

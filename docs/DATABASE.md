@@ -59,11 +59,11 @@ create extension if not exists pg_trgm;
 create type channel_type        as enum ('whatsapp', 'telegram', 'web');
 create type conversation_status as enum ('bot', 'waiting_owner', 'owner', 'closed');
 create type message_sender      as enum ('customer', 'bot', 'owner');
-create type order_status        as enum ('new', 'in_progress', 'delivered', 'cancelled');
+create type order_status        as enum ('new', 'in_progress', 'shipped', 'delivered', 'cancelled', 'returned');  -- shipped/returned: 0022 (3.11)
 create type escalation_reason   as enum ('low_confidence', 'forced_rule', 'customer_requested');
 create type escalation_status   as enum ('open', 'answered', 'dismissed');
 create type kb_source           as enum ('upload', 'owner_answer', 'manual');
-create type movement_reason     as enum ('upload', 'order', 'order_cancel', 'manual', 'chat_edit');
+create type movement_reason     as enum ('upload', 'order', 'order_cancel', 'manual', 'chat_edit', 'order_return');  -- order_return: 0023 (3.11)
 ```
 
 ### 3.2 المتجر والقنوات
@@ -75,6 +75,7 @@ create table stores (
   name                    text not null,
   phone                   text,
   currency                text not null default 'ILS',
+  phone_country_code      text not null default '970',  -- لتوحيد أرقام العملاء (0599... -> +970599...)، migration 0019
   timezone                text not null default 'Asia/Hebron',
   owner_telegram_chat_id  bigint,                 -- لإرسال الإشعارات لصاحب المتجر
   next_order_number       integer not null default 1,
@@ -162,6 +163,7 @@ create table delivery_zones (
   name      text not null,
   fee       numeric(10,2) not null check (fee >= 0),
   is_active boolean not null default true,
+  is_pickup boolean not null default false,   -- استلام من المحل (3.15، 0027): أجرة 0 وبدون عنوان، واحد بس لكل متجر
   unique (store_id, name)
 );
 ```
@@ -177,7 +179,8 @@ create table customers (
   channel          channel_type not null,
   external_id      text not null,        -- رقم واتساب أو Telegram chat id
   name             text,
-  phone            text,
+  phone            text,                -- زي ما كتبه العميل
+  phone_normalized text,                -- E.164، العملاء بنفس الرقم = نفس الشخص بصفحة العملاء (0020/0021)
   default_address  text,
   created_at       timestamptz not null default now(),
   unique (store_id, channel, external_id)
@@ -356,6 +359,45 @@ create table owner_pending_actions (
 ```
 
 عند التأكيد: نفس الـ transaction بتقفل الـ variant، بتحسب الكمية الجديدة من المخزون **الحالي** (لو إجا طلب بالنص)، بترفض لو النتيجة سالبة، وبتكتب `inventory_movements` بـ `reason = 'chat_edit'`.
+
+### 3.9 "خبّرني لما يرجع" (3.12، migration 0025)
+
+```sql
+create table customer_interests (
+  id           uuid primary key default gen_random_uuid(),
+  store_id     uuid not null references stores(id) on delete cascade,
+  customer_id  uuid not null references customers(id) on delete cascade,
+  variant_id   uuid not null references product_variants(id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  notified_at  timestamptz            -- انبعتله "رجع متوفر"
+);
+-- سطر مفتوح واحد لكل عميل و variant
+create unique index customer_interests_open_idx on customer_interests (store_id, customer_id, variant_id)
+  where notified_at is null;
+```
+
+بيتسجّل بس بعد ما العميل يوافق. صاحب المتجر بيشوف المستنيين بصفحة المخزون، وبعد ما يزيد الكمية بيبعتلهم رسالة ثابتة (مكتوبة بالكود).
+
+### 3.10 سجل التدقيق (3.14، migration 0026)
+
+```sql
+create type audit_actor as enum ('owner', 'bot', 'system');
+
+create table audit_logs (
+  id          uuid primary key default gen_random_uuid(),
+  store_id    uuid not null references stores(id) on delete cascade,
+  actor       audit_actor not null,
+  action      text not null,     -- اسم الـ endpoint (update_status...) أو order.create / conversation.escalate / interest.create
+  entity_id   uuid,
+  before      jsonb,
+  after       jsonb,             -- بدون أسرار ولا نصوص رسائل
+  created_at  timestamptz not null default now()
+);
+```
+
+إضافة بس: الـ RLS فيها policy قراءة لنفس المتجر، وما في policy تعديل أو حذف.
+
+**حالات الطلب (3.11):** `new → in_progress → shipped → delivered`، والإلغاء قبل التوصيل، و`returned` بعد `delivered` بس. الإلغاء والإرجاع بيرجّعوا المخزون مرة وحدة (`order_cancel` / `order_return`)، والطلبات الملغية والمرتجعة ما بتنحسب مبيعات.
 
 ## 4. رفع Excel مع الـ Variants
 

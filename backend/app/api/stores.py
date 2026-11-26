@@ -16,6 +16,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, StringConstraints
 from app.api.auth import CurrentUser, get_current_store_id, get_current_user
 from app.db import stores as db
 from app.db.pool import get_db
+from app.services import audit
+from app.utils.phone import COUNTRY_CODE
 
 router = APIRouter(prefix="/api/store", tags=["store"])
 
@@ -45,11 +47,23 @@ def _check_currency(value: str) -> str:
 Currency = Annotated[str, AfterValidator(_check_currency)]
 
 
+def _check_country_code(value: str) -> str:
+    value = value.strip().lstrip("+")
+    if not COUNTRY_CODE.fullmatch(value):
+        raise ValueError("مفتاح الدولة لازم يكون أرقام بس، مثل 970")
+    return value
+
+
+# Reads customers' local numbers (0599... -> +970599...) on the customers page (task 3.9).
+CountryCode = Annotated[str, AfterValidator(_check_country_code)]
+
+
 class StoreCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")  # rejects store_id / owner_id in the body
     name: StoreName
     phone: Phone = None
     currency: Currency = "ILS"
+    phone_country_code: CountryCode = "970"
 
 
 class StoreUpdate(BaseModel):
@@ -57,6 +71,7 @@ class StoreUpdate(BaseModel):
     name: StoreName | None = None
     phone: Phone = None
     currency: Currency | None = None
+    phone_country_code: CountryCode | None = None
 
 
 class StoreOut(BaseModel):
@@ -64,6 +79,7 @@ class StoreOut(BaseModel):
     name: str
     phone: str | None
     currency: str
+    phone_country_code: str
     timezone: str
     created_at: datetime
 
@@ -74,7 +90,7 @@ async def create_my_store(
     user: CurrentUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> StoreOut:
-    row = await db.create_store(conn, user.user_id, body.name, body.phone, body.currency)
+    row = await db.create_store(conn, user.user_id, body.name, body.phone, body.currency, body.phone_country_code)
     if row is None:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="لديك متجر بالفعل")
     return StoreOut(**dict(row))
@@ -96,9 +112,14 @@ async def update_my_store(
     conn: asyncpg.Connection = Depends(get_db),
 ) -> StoreOut:
     changes = body.model_dump(exclude_unset=True)
-    # name and currency are NOT NULL: an explicit null means "no change" is not allowed.
-    for required in ("name", "currency"):
+    # These are NOT NULL: an explicit null is not allowed.
+    for required in ("name", "currency", "phone_country_code"):
         if required in changes and changes[required] is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{required} لا يمكن أن يكون فارغاً")
+    old = await db.get_store(conn, store_id)
     row = await db.update_store(conn, store_id, changes)
+    fields = [k for k in changes if k in db.EDITABLE_COLUMNS]
+    if fields:
+        await audit.log(conn, store_id, "owner", "update_my_store", store_id,
+                        before={k: old[k] for k in fields}, after={k: row[k] for k in fields})   # 3.14
     return StoreOut(**dict(row))

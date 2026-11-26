@@ -30,7 +30,11 @@ OTHER_EC_KEY = ec.generate_private_key(ec.SECP256R1())
 
 def test_settings(**overrides) -> Settings:
     values = dict(supabase_url=TEST_URL, database_url="postgresql://unused", supabase_jwt_secret=HS_SECRET,
-                  web_chat_secret=WEB_SECRET)
+                  web_chat_secret=WEB_SECRET,
+                  chat_debounce_seconds=0,  # answer at once in tests (tests/test_reply_queue.py covers the pause)
+                  # Simulator limits off unless a test sets them (tests/test_web_chat_limits.py does).
+                  web_chat_max_messages_per_session=0, web_chat_max_messages_per_ip_hour=0,
+                  web_chat_max_sessions_per_ip_hour=0, web_chat_max_messages_per_store_day=0)
     values.update(overrides)
     return Settings(**values)
 

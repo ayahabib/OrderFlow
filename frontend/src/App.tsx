@@ -1,8 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
+import ActivityPage from './pages/ActivityPage'
 import Layout from './components/Layout'
 import ConversationsPage from './pages/ConversationsPage'
 import CreateStorePage from './pages/CreateStorePage'
+import CustomersPage from './pages/CustomersPage'
 import DashboardPage from './pages/DashboardPage'
 import KnowledgePage from './pages/KnowledgePage'
 import OrdersPage from './pages/OrdersPage'
@@ -12,6 +14,7 @@ import SettingsPage from './pages/SettingsPage'
 import SimulatorPage from './pages/SimulatorPage'
 import StockPage from './pages/StockPage'
 import TrackPage from './pages/TrackPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import { StoreProvider, useStore } from './store/StoreProvider'
 
 function Loading() {
@@ -39,6 +42,8 @@ function Dashboard() {
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/customers" element={<CustomersPage />} />
+        <Route path="/customers/:id" element={<CustomersPage />} />
         <Route path="/conversations" element={<ConversationsPage />} />
         <Route path="/conversations/:id" element={<ConversationsPage />} />
         <Route path="/products" element={<ProductsPage />} />
@@ -48,6 +53,7 @@ function Dashboard() {
         <Route path="/import" element={<Navigate to="/products" replace />} />
         <Route path="/simulator" element={<SimulatorPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/activity" element={<ActivityPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Routes>
@@ -72,6 +78,8 @@ export default function App() {
         <Routes>
           {/* Public: the customer's order tracking link (3.6), no login. */}
           <Route path="/track/:token" element={<TrackPage />} />
+          {/* Password reset link from the email (3.15): works signed in or not. */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<Root />} />
         </Routes>
       </BrowserRouter>

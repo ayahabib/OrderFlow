@@ -4,7 +4,7 @@ from uuid import UUID
 
 import asyncpg
 
-STORE_COLUMNS = "id, name, phone, currency, timezone, created_at"
+STORE_COLUMNS = "id, name, phone, currency, phone_country_code, timezone, created_at"
 
 
 async def get_store_id_for_owner(conn: asyncpg.Connection, owner_id: UUID) -> UUID | None:
@@ -17,22 +17,23 @@ async def get_store(conn: asyncpg.Connection, store_id: UUID) -> asyncpg.Record 
 
 
 async def create_store(
-    conn: asyncpg.Connection, owner_id: UUID, name: str, phone: str | None, currency: str
+    conn: asyncpg.Connection, owner_id: UUID, name: str, phone: str | None, currency: str,
+    phone_country_code: str = "970",
 ) -> asyncpg.Record | None:
     """Create the owner's store. Returns None if the owner already has one (one store per user)."""
     return await conn.fetchrow(
         f"""
-        insert into stores (owner_id, name, phone, currency)
-        values ($1, $2, $3, $4)
+        insert into stores (owner_id, name, phone, currency, phone_country_code)
+        values ($1, $2, $3, $4, $5)
         on conflict (owner_id) do nothing
         returning {STORE_COLUMNS}
         """,
-        owner_id, name, phone, currency,
+        owner_id, name, phone, currency, phone_country_code,
     )
 
 
 # Columns the owner may edit from Settings. Anything else is never written.
-EDITABLE_COLUMNS = ("name", "phone", "currency")
+EDITABLE_COLUMNS = ("name", "phone", "currency", "phone_country_code")
 
 
 async def update_store(conn: asyncpg.Connection, store_id: UUID, changes: dict) -> asyncpg.Record | None:

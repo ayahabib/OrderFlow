@@ -57,11 +57,12 @@ export type Store = {
   name: string
   phone: string | null
   currency: string
+  phone_country_code: string
   timezone: string
   created_at: string
 }
 
-export type StoreInput = { name: string; phone: string | null; currency: string }
+export type StoreInput = { name: string; phone: string | null; currency: string; phone_country_code: string }
 
 export const getMe = () => api<Me>('/api/me')
 export const getStore = () => api<Store>('/api/store')
@@ -206,10 +207,10 @@ export const deleteOffer = (id: string) => api<null>(`/api/offers/${id}`, { meth
 
 // --- delivery zones ---
 
-export type Zone = { id: string; name: string; fee: string; is_active: boolean }
+export type Zone = { id: string; name: string; fee: string; is_active: boolean; is_pickup: boolean }
 
 export const listZones = () => api<Zone[]>('/api/delivery-zones')
-export const createZone = (input: { name: string; fee: string }) =>
+export const createZone = (input: { name: string; fee: string; is_pickup?: boolean }) =>
   api<Zone>('/api/delivery-zones', { method: 'POST', body: JSON.stringify(input) })
 export const updateZone = (id: string, changes: Partial<Omit<Zone, 'id'>>) =>
   api<Zone>(`/api/delivery-zones/${id}`, { method: 'PATCH', body: JSON.stringify(changes) })
@@ -217,7 +218,7 @@ export const deleteZone = (id: string) => api<null>(`/api/delivery-zones/${id}`,
 
 // --- orders ---
 
-export type OrderStatus = 'new' | 'in_progress' | 'delivered' | 'cancelled'
+export type OrderStatus = 'new' | 'in_progress' | 'shipped' | 'delivered' | 'cancelled' | 'returned'
 
 export type Order = {
   id: string
@@ -380,6 +381,7 @@ export const answerEscalation = (id: string, input: {
 
 export type SalesReport = {
   currency: string
+  phone_country_code: string
   start: string
   end: string
   orders_count: number
@@ -458,3 +460,63 @@ export type StalledDraft = {
 }
 
 export const listIncompleteOrders = () => api<StalledDraft[]>('/api/orders/incomplete')
+
+// --- customers (task 3.9) ---
+
+export type CustomerSummary = {
+  id: string
+  name: string | null
+  phone: string | null
+  channels: string[]
+  orders_count: number
+  total_spent: string
+  last_order_at: string | null
+  last_message_at: string | null
+}
+
+export type CustomerDetail = CustomerSummary & {
+  address: string | null
+  first_seen_at: string
+  orders: { id: string; order_number: number; status: OrderStatus; total: string; items_count: number; created_at: string }[]
+  conversations: { id: string; channel: string; status: string; last_message_at: string }[]
+}
+
+export const listCustomers = (q = '') =>
+  api<CustomerSummary[]>(`/api/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`)
+export const getCustomer = (id: string) => api<CustomerDetail>(`/api/customers/${id}`)
+
+// --- "tell me when it's back" (task 3.12) ---
+
+export type WaitingVariant = {
+  variant_id: string
+  product_name: string
+  variant_name: string | null
+  stock_quantity: number
+  waiting: number
+  since: string
+  customer_names: string[]
+}
+
+export const listWaiting = () => api<WaitingVariant[]>('/api/interests')
+export const notifyWaiting = (variantId: string) =>
+  api<{ sent: number; failed: number }>(`/api/interests/${variantId}/notify`, { method: 'POST' })
+
+// --- dashboard assistant, read only (task 3.13) ---
+
+export const askAssistant = (text: string) =>
+  api<{ reply: string }>('/api/assistant', { method: 'POST', body: JSON.stringify({ text }) })
+
+// --- audit log (task 3.14) ---
+
+export type AuditEntry = {
+  id: string
+  actor: 'owner' | 'bot' | 'system'
+  action: string
+  entity_id: string | null
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  created_at: string
+}
+
+export const listAudit = (actor = '', offset = 0) =>
+  api<AuditEntry[]>(`/api/audit?limit=100&offset=${offset}${actor ? `&actor=${actor}` : ''}`)

@@ -50,6 +50,20 @@ export default function ZonesEditor({ currency, onChange }: { currency: string; 
     }
   }
 
+  // Pickup from the store (3.15): one zone with fee 0; the bot offers it when asking for the address.
+  async function addPickup() {
+    setActionError(null)
+    setBusy(true)
+    try {
+      const zone = await createZone({ name: 'استلام من المحل', fee: '0', is_pickup: true })
+      setZones((list) => [...list, zone])
+    } catch (err) {
+      setActionError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function toggle(z: Zone) {
     setActionError(null)
     try {
@@ -82,6 +96,11 @@ export default function ZonesEditor({ currency, onChange }: { currency: string; 
           className="narrow" value={fee} onChange={(e) => setFee(e.target.value)} />
         <button type="submit" disabled={busy}>{busy ? '...' : '+ إضافة'}</button>
       </form>
+      {!zones.some((z) => z.is_pickup) && (
+        <p className="small">
+          <button type="button" className="link small" disabled={busy} onClick={addPickup}>+ خيار استلام من المحل (بدون أجرة)</button>
+        </p>
+      )}
 
       {actionError && <p className="msg error" role="alert">{actionError}</p>}
 
@@ -101,8 +120,10 @@ export default function ZonesEditor({ currency, onChange }: { currency: string; 
                       validate={validateName} onSave={async (t) => replace(await updateZone(z.id, { name: t }))} />
                   </td>
                   <td>
-                    <EditableCell label={`أجرة ${z.name}`} value={z.fee} width="5rem" validate={(t) => validatePrice(t)}
-                      onSave={async (t) => replace(await updateZone(z.id, { fee: t }))} />
+                    {z.is_pickup ? <span className="muted small">بدون أجرة (استلام)</span> : (
+                      <EditableCell label={`أجرة ${z.name}`} value={z.fee} width="5rem" validate={(t) => validatePrice(t)}
+                        onSave={async (t) => replace(await updateZone(z.id, { fee: t }))} />
+                    )}
                   </td>
                   <td>
                     {z.is_active ? <span className="badge">فعّالة</span> : <span className="badge muted-badge">موقوفة</span>}

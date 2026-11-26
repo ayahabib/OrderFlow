@@ -10,7 +10,7 @@ type Tracked = {
   store_name: string
   currency: string
   order_number: number
-  status: 'new' | 'in_progress' | 'delivered' | 'cancelled'
+  status: 'new' | 'in_progress' | 'shipped' | 'delivered' | 'cancelled' | 'returned'
   steps: string[]
   zone_name: string | null
   delivery_fee: string
@@ -20,7 +20,9 @@ type Tracked = {
   updated_at: string
 }
 
-const STEP_LABEL: Record<string, string> = { new: 'استلمنا الطلب', in_progress: 'قيد التجهيز والتوصيل', delivered: 'تم التوصيل' }
+const STEP_LABEL: Record<string, string> = {
+  new: 'استلمنا الطلب', in_progress: 'قيد التجهيز', shipped: 'انشحن وعالطريق', delivered: 'تم التوصيل',
+}
 
 /** Public order tracking (task 3.6): no login, the random token in the link is the only key. */
 export default function TrackPage() {
@@ -60,6 +62,8 @@ export default function TrackPage() {
 
         {order.status === 'cancelled' ? (
           <p className="msg error">هالطلب انلغى. إذا عندك سؤال احكي مع المتجر.</p>
+        ) : order.status === 'returned' ? (
+          <p className="msg info">هالطلب انرجع للمتجر. إذا عندك سؤال احكي مع المتجر.</p>
         ) : (
           <ol className="track-steps" aria-label="حالة الطلب">
             {order.steps.map((s, i) => (

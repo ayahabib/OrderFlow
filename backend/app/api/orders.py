@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 
 from app.api.auth import get_current_store_id
@@ -19,8 +19,9 @@ from app.services.excel_import import DEFAULT_VARIANT
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
-OrderStatus = Literal["new", "in_progress", "delivered", "cancelled"]
-STATUS_LABEL = {"new": "جديد", "in_progress": "قيد التنفيذ", "delivered": "تم التوصيل", "cancelled": "ملغي"}
+OrderStatus = Literal["new", "in_progress", "shipped", "delivered", "cancelled", "returned"]
+STATUS_LABEL = {"new": "جديد", "in_progress": "قيد التجهيز", "shipped": "تم الشحن", "delivered": "تم التوصيل",
+                "cancelled": "ملغي", "returned": "مرتجع"}
 
 
 class OrderItemOut(BaseModel):
@@ -61,7 +62,7 @@ def _out(row: asyncpg.Record) -> OrderOut:
     data = dict(row)
     if isinstance(data["items"], str):
         data["items"] = json.loads(data["items"])
-    order = ["in_progress", "delivered", "cancelled"]
+    order = ["in_progress", "shipped", "delivered", "returned", "cancelled"]
     data["allowed_next"] = [s for s in order if s in service.ALLOWED[data["status"]]]
     return OrderOut(**data)
 
@@ -86,10 +87,12 @@ async def list_orders(
 async def update_status(
     order_id: UUID,
     body: StatusUpdate,
+    request: Request,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> OrderOut:
-    """Forward only, plus cancel. Cancelling puts the items back in stock."""
+    """Forward only, plus cancel (before delivery) and return (after). Both put the items back in stock."""
+    before = await conn.fetchval("select status::text from orders where id = $1 and store_id = $2", order_id, store_id)
     try:
         found = await service.change_status(conn, store_id, order_id, body.status)
     except service.StatusChangeError as exc:
@@ -99,6 +102,7 @@ async def update_status(
         )
     if not found:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="الطلب غير موجود")
+    request.state.audit = {"before": {"status": before}, "after": {"status": body.status}}   # 3.14
     return _out(await db.get_order(conn, store_id, order_id))
 
 

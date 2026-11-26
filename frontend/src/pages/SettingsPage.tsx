@@ -26,7 +26,7 @@ export default function SettingsPage() {
       <div className="narrow-block">
         <StoreForm
           key={store.id}
-          initial={{ name: store.name, phone: store.phone, currency: store.currency }}
+          initial={{ name: store.name, phone: store.phone, currency: store.currency, phone_country_code: store.phone_country_code }}
           submitLabel="حفظ"
           onSubmit={async (input) => setStore(await updateStore(input))}
         />

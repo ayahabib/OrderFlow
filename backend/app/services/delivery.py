@@ -15,13 +15,29 @@ class Zone:
     id: UUID
     name: str
     fee: Decimal
+    is_pickup: bool = False   # pickup from the store (3.15)
 
 
 async def active_zones(conn: asyncpg.Connection, store_id: UUID) -> list[Zone]:
     rows = await conn.fetch(
-        "select id, name, fee from delivery_zones where store_id = $1 and is_active order by name", store_id
+        "select id, name, fee, is_pickup from delivery_zones where store_id = $1 and is_active order by name", store_id
     )
     return [Zone(**dict(r)) for r in rows]
+
+
+# "I'll pick it up" in the customer's words (compared after normalize_arabic).
+_PICKUP_WORDS = ("استلام", "استلم", "بستلم", "منستلم", "بمر", "بمرق", "باخده", "باخذه", "بوخده", "من المحل")
+
+
+def wants_pickup(text: str) -> bool:
+    norm = " ".join(re.sub(r"[^\w\s]", " ", normalize_arabic(text)).split())
+    words = {_strip_article(w) for w in norm.split()}
+    return any((normalize_arabic(w) in words) if " " not in w else (f" {normalize_arabic(w)} " in f" {norm} ")
+               for w in _PICKUP_WORDS)
+
+
+def pickup_zone(zones: list["Zone"]) -> "Zone | None":
+    return next((z for z in zones if z.is_pickup), None)
 
 
 def _strip_article(word: str) -> str:

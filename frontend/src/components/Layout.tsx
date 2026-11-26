@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { signOut, useAuth } from '../auth/AuthProvider'
 import { getLowStock, listConversations, listOrders } from '../lib/api'
 import { useStore } from '../store/StoreProvider'
+import AssistantDrawer from './AssistantDrawer'
 
 const COUNTS_MS = 30_000
 
@@ -68,6 +69,7 @@ export default function Layout() {
           <NavLink to="/dashboard">نظرة عامة</NavLink>
           <NavLink to="/conversations">المحادثات <Count n={counts.chats} label="محادثة بانتظار ردك" /></NavLink>
           <NavLink to="/orders">الطلبات <Count n={counts.orders} label="طلب جديد" /></NavLink>
+          <NavLink to="/customers">العملاء</NavLink>
         </nav>
 
         <nav className="nav-group" aria-label="المتجر">
@@ -81,6 +83,7 @@ export default function Layout() {
           <span>تجربة</span>
           <NavLink to="/simulator">محاكي الشات</NavLink>
           <NavLink to="/settings">الإعدادات</NavLink>
+          <NavLink to="/activity">سجل النشاط</NavLink>
         </nav>
 
         <div className="sidebar-foot">
@@ -93,6 +96,7 @@ export default function Layout() {
       <main className="shell">
         <Outlet />
       </main>
+      <AssistantDrawer />
     </div>
   )
 }

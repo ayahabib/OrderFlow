@@ -4,7 +4,7 @@ from uuid import UUID
 
 import asyncpg
 
-COLUMNS = "id, name, fee, is_active"
+COLUMNS = "id, name, fee, is_active, is_pickup"
 
 
 async def list_zones(conn: asyncpg.Connection, store_id: UUID) -> list[dict]:
@@ -17,15 +17,17 @@ async def get_zone(conn: asyncpg.Connection, store_id: UUID, zone_id: UUID) -> d
     return dict(row) if row else None
 
 
-async def insert_zone(conn: asyncpg.Connection, store_id: UUID, name: str, fee, is_active: bool) -> dict:
+async def insert_zone(conn: asyncpg.Connection, store_id: UUID, name: str, fee, is_active: bool,
+                      is_pickup: bool = False) -> dict:
     row = await conn.fetchrow(
-        f"insert into delivery_zones (store_id, name, fee, is_active) values ($1, $2, $3, $4) returning {COLUMNS}",
-        store_id, name, fee, is_active,
+        f"""insert into delivery_zones (store_id, name, fee, is_active, is_pickup)
+            values ($1, $2, $3, $4, $5) returning {COLUMNS}""",
+        store_id, name, fee, is_active, is_pickup,
     )
     return dict(row)
 
 
-EDITABLE = ("name", "fee", "is_active")
+EDITABLE = ("name", "fee", "is_active", "is_pickup")
 
 
 async def update_zone(conn: asyncpg.Connection, store_id: UUID, zone_id: UUID, changes: dict) -> dict | None:

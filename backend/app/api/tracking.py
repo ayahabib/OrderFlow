@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/track", tags=["tracking"])
 
 Token = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
 
-STEPS = ["new", "in_progress", "delivered"]   # cancelled is shown on its own
+STEPS = ["new", "in_progress", "shipped", "delivered"]   # cancelled / returned are shown on their own
 
 
 class TrackedItem(BaseModel):

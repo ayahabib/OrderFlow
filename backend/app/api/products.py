@@ -10,7 +10,7 @@ from typing import Annotated
 from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from app.api.auth import get_current_store_id
@@ -178,6 +178,7 @@ async def update_product(
 async def update_variant(
     variant_id: UUID,
     body: VariantUpdate,
+    request: Request,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> dict:
@@ -197,9 +198,11 @@ async def update_variant(
         kwargs["price_override"] = fields["price_override"]
     if "low_stock_threshold" in fields:
         kwargs["low_stock_threshold"] = fields["low_stock_threshold"]
+    old = await products_db.get_variant(conn, store_id, variant_id)
     if not await inventory.update_variant(conn, store_id, variant_id, **kwargs):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="النسخة غير موجودة")
     variant = await products_db.get_variant(conn, store_id, variant_id)
+    request.state.audit = {"before": {k: old[k] for k in kwargs}, "after": {k: variant[k] for k in kwargs}}   # 3.14
     offers = await pricing.load_offers(conn, store_id)
     return _annotate(variant, variant["product_id"], offers, datetime.now(timezone.utc))
 

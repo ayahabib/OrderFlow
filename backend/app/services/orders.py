@@ -14,6 +14,8 @@ from uuid import UUID
 import asyncpg
 
 from app.services.order_totals import Totals
+from app.services import audit
+from app.utils.phone import normalize_phone
 
 
 @dataclass(frozen=True)
@@ -111,14 +113,20 @@ async def place_order(
                 store_id, line.variant_id, -line.quantity, order_id,
             )
 
-        # Remember contact details for next time.
+        # Remember contact details for next time. phone_normalized (E.164, task 3.9) groups the
+        # same person across channels on the customers page.
+        country_code = await conn.fetchval("select phone_country_code from stores where id = $1", store_id)
         await conn.execute(
             """
-            update customers set phone = coalesce($3, phone), default_address = coalesce($4, default_address)
+            update customers set phone = coalesce($3, phone), default_address = coalesce($4, default_address),
+                                 phone_normalized = coalesce($5, phone_normalized)
              where id = $1 and store_id = $2
             """,
-            customer_id, store_id, phone, address,
+            customer_id, store_id, phone, address, normalize_phone(phone, country_code),
         )
+
+        await audit.log(conn, store_id, "bot", "order.create", order_id,
+                        after={"order_number": number, "total": totals.total})   # 3.14
 
     return PlacedOrder(order_id=order_id, order_number=number, total=totals.total,
                        tracking_token=placed_row["tracking_token"])
@@ -149,7 +157,7 @@ async def find_recent_duplicate(
                array(select i.quantity from order_items i
                       where i.order_id = o.id and i.store_id = o.store_id order by i.id) as quantities
           from orders o
-         where o.store_id = $1 and o.customer_id = $2 and o.status <> 'cancelled'
+         where o.store_id = $1 and o.customer_id = $2 and o.status not in ('cancelled', 'returned')
            and o.created_at >= now() - make_interval(hours => $3)
          order by o.created_at desc
         """,
@@ -161,14 +169,18 @@ async def find_recent_duplicate(
     return None
 
 
-# Forward only, plus cancel; delivered and cancelled are final (owner's decision), so
-# stock can never be returned twice.
+# Forward only, plus cancel (before delivery) and return (after delivery, task 3.11).
+# cancelled and returned are final, so stock can never come back twice.
 ALLOWED = {
-    "new": {"in_progress", "delivered", "cancelled"},
-    "in_progress": {"delivered", "cancelled"},
-    "delivered": set(),
+    "new": {"in_progress", "shipped", "delivered", "cancelled"},
+    "in_progress": {"shipped", "delivered", "cancelled"},
+    "shipped": {"delivered", "cancelled"},
+    "delivered": {"returned"},
     "cancelled": set(),
+    "returned": set(),
 }
+# These put the items back in stock, with this inventory_movements reason.
+RESTOCK_REASON = {"cancelled": "order_cancel", "returned": "order_return"}
 
 
 class StatusChangeError(Exception):
@@ -181,12 +193,12 @@ class StatusChangeError(Exception):
 
 
 async def change_status(conn: asyncpg.Connection, store_id: UUID, order_id: UUID, new_status: str) -> bool:
-    """Change an order's status. Cancelling returns its stock with 'order_cancel' movements, atomically.
+    """Change an order's status. Cancelling or returning puts its stock back (RESTOCK_REASON), atomically.
 
     Returns False if the order isn't in this store. Raises StatusChangeError for a disallowed move.
     """
     async with conn.transaction():
-        # Lock the order so two clicks can't both cancel (and return stock twice).
+        # Lock the order so two clicks can't both cancel/return (and give stock back twice).
         current = await conn.fetchval(
             "select status::text from orders where id = $1 and store_id = $2 for update", order_id, store_id
         )
@@ -197,7 +209,8 @@ async def change_status(conn: asyncpg.Connection, store_id: UUID, order_id: UUID
         if new_status not in ALLOWED.get(current, set()):
             raise StatusChangeError(current, new_status)
 
-        if new_status == "cancelled":
+        reason = RESTOCK_REASON.get(new_status)
+        if reason:
             items = await conn.fetch(
                 """
                 select variant_id, quantity from order_items
@@ -220,9 +233,9 @@ async def change_status(conn: asyncpg.Connection, store_id: UUID, order_id: UUID
                     await conn.execute(
                         """
                         insert into inventory_movements (store_id, variant_id, change, reason, order_id)
-                        values ($1, $2, $3, 'order_cancel', $4)
+                        values ($1, $2, $3, $5::movement_reason, $4)
                         """,
-                        store_id, item["variant_id"], item["quantity"], order_id,
+                        store_id, item["variant_id"], item["quantity"], order_id, reason,
                     )
 
         await conn.execute(

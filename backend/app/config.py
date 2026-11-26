@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     web_chat_secret: SecretStr | None = None  # signs web chat simulator session tokens
     public_base_url: str = "http://localhost:8000"
 
+    # Seconds the bot waits after a customer's latest message before answering, so quick
+    # split-up messages are read together (task 3.10). 0 = answer each message at once.
+    chat_debounce_seconds: float = 2.5
+
+    # Web chat simulator limits (task 3.8): it is public and every message costs an LLM call. 0 = no limit.
+    web_chat_max_messages_per_session: int = 30
+    web_chat_max_messages_per_ip_hour: int = 60
+    web_chat_max_sessions_per_ip_hour: int = 5
+    web_chat_max_messages_per_store_day: int = 500
+
     # Owner notifications (task 1.11): one platform bot from @BotFather sends escalation alerts.
     telegram_notify_bot_token: SecretStr | None = None
     dashboard_url: str = "http://localhost:5173"  # links in owner alerts

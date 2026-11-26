@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import BarList from '../components/BarList'
 import EditableCell, { validateQuantity } from '../components/EditableCell'
 import StockChat from '../components/StockChat'
+import WaitingCustomers from '../components/WaitingCustomers'
 import { getLowStock, getStockByProduct, updateVariant, type LowStockItem, type ProductStock } from '../lib/api'
 
 const REFRESH_MS = 60_000
@@ -13,12 +14,14 @@ export default function StockPage() {
   const [low, setLow] = useState<LowStockItem[] | null>(null)
   const [stock, setStock] = useState<ProductStock[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)   // stock changed: re-read who is waiting
 
   const load = useCallback(async () => {
     try {
       const [l, s] = await Promise.all([getLowStock(), getStockByProduct()])
       setLow(l)
       setStock(s)
+      setReloadKey((k) => k + 1)
       setError(null)
     } catch (e) {
       setError((e as Error).message)
@@ -88,6 +91,8 @@ export default function StockPage() {
           )}
         </div>
       )}
+
+      <WaitingCustomers reloadKey={reloadKey} />
 
       <StockChat onChanged={load} />
 

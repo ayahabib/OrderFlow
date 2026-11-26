@@ -21,6 +21,25 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
+  // Password reset (3.15): Supabase emails a link back to /reset-password, where the new password is set.
+  async function forgot() {
+    setError(null)
+    setInfo(null)
+    if (!email.trim()) return setError('اكتب إيميلك فوق أول، وبعدين اكبس "نسيت كلمة السر؟"')
+    setBusy(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (error) throw error
+      setInfo('إذا الإيميل مسجّل عنا، بيوصلك رابط لتغيير كلمة السر. افتحه من نفس الجهاز.')
+    } catch (err) {
+      setError(authError((err as Error).message))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
@@ -82,6 +101,9 @@ export default function LoginPage() {
           onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); setInfo(null) }}>
           {mode === 'login' ? 'ما عندك حساب؟ سجّل هون' : 'عندك حساب؟ سجّل دخول'}
         </button>
+        {mode === 'login' && (
+          <button type="button" className="link small" disabled={busy} onClick={forgot}>نسيت كلمة السر؟</button>
+        )}
       </form>
       </div>
     </main>

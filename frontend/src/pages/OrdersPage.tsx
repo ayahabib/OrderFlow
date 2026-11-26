@@ -2,23 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { listOrders, updateOrderStatus, type Order, type OrderFilters, type OrderStatus } from '../lib/api'
 import IncompleteOrders from '../components/IncompleteOrders'
 import { useStore } from '../store/StoreProvider'
-
-const STATUS: Record<OrderStatus, { label: string; cls: string }> = {
-  new: { label: 'جديد', cls: 'status-new' },
-  in_progress: { label: 'قيد التنفيذ', cls: 'warn' },
-  delivered: { label: 'تم التوصيل', cls: '' },
-  cancelled: { label: 'ملغي', cls: 'muted-badge' },
-}
+import { isClosedWithoutSale, ORDER_STATUS as STATUS } from '../lib/orderStatus'
 
 // Button text for each move the backend allows.
 const ACTION: Record<OrderStatus, string> = {
   new: '',
-  in_progress: 'قيد التنفيذ',
+  in_progress: 'قيد التجهيز',
+  shipped: 'تم الشحن',
   delivered: 'تم التوصيل',
   cancelled: 'إلغاء',
+  returned: 'إرجاع',
 }
 
-const REFRESH_MS = 30_000
+const REFRESH_MS = 10_000   // 3.15; skipped while the tab is hidden
 const dateFmt = new Intl.DateTimeFormat('ar-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })
 
 function itemLabel(i: Order['items'][number]) {
@@ -45,7 +41,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     load()
-    const timer = window.setInterval(load, REFRESH_MS)  // new bot orders show up without reloading
+    const timer = window.setInterval(() => { if (!document.hidden) load() }, REFRESH_MS)  // new bot orders show up without reloading
     return () => window.clearInterval(timer)
   }, [load])
 
@@ -57,6 +53,8 @@ export default function OrdersPage() {
   async function move(o: Order, next: OrderStatus) {
     if (next === 'cancelled' &&
       !window.confirm(`إلغاء الطلب #${o.order_number}؟\nالكميات رح ترجع للمخزون، وما بتقدر ترجّع الطلب بعدها.`)) return
+    if (next === 'returned' &&
+      !window.confirm(`تسجيل الطلب #${o.order_number} كمرتجع؟\nالكميات رح ترجع للمخزون، والطلب بيطلع من المبيعات. ما بتقدر تتراجع بعدها.`)) return
     setActionError(null)
     setBusyId(o.id)
     try {
@@ -114,7 +112,7 @@ export default function OrdersPage() {
             </thead>
             <tbody>
               {orders.map((o) => (
-                <tr key={o.id} className={o.status === 'cancelled' ? 'inactive' : undefined}>
+                <tr key={o.id} className={isClosedWithoutSale(o.status) ? 'inactive' : undefined}>
                   <td>
                     <strong>#{o.order_number}</strong>
                     {o.duplicate_of_number && (
@@ -148,7 +146,7 @@ export default function OrdersPage() {
                     <div className="row-actions">
                       {o.allowed_next.map((next) => (
                         <button key={next} type="button" disabled={busyId === o.id}
-                          className={`link small${next === 'cancelled' ? ' danger' : ''}`}
+                          className={`link small${isClosedWithoutSale(next) ? ' danger' : ''}`}
                           onClick={() => move(o, next)}>
                           {ACTION[next]}
                         </button>

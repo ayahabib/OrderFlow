@@ -77,7 +77,7 @@ async def sales_report(
           from order_items i
           join orders o on o.id = i.order_id and o.store_id = i.store_id
           join stores s on s.id = o.store_id
-         where i.store_id = $1 and o.status <> 'cancelled'
+         where i.store_id = $1 and o.status not in ('cancelled', 'returned')
            and (o.created_at at time zone s.timezone)::date between $2 and $3
          group by i.product_name
          order by quantity desc, revenue desc, i.product_name
@@ -88,7 +88,7 @@ async def sales_report(
     open_orders = await conn.fetchrow(
         """
         select count(*) filter (where status = 'new') as new,
-               count(*) filter (where status = 'in_progress') as in_progress
+               count(*) filter (where status in ('in_progress', 'shipped')) as in_progress
           from orders where store_id = $1
         """,
         store_id,

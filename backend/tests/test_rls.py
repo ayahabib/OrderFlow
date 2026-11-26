@@ -16,6 +16,7 @@ STORE_TABLES = [
     "store_channels", "products", "product_variants", "inventory_movements",
     "delivery_zones", "customers", "conversations", "messages", "orders",
     "order_items", "escalations", "knowledge_base", "offers", "owner_pending_actions",
+    "customer_interests",   # 3.12 (audit_logs has a read-only "store_read" policy instead, 3.14)
 ]
 
 

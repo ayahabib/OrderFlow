@@ -2,7 +2,7 @@
 
 days left = stock_quantity / average daily sales, per variant.
 - Sales = net units sold in the last WINDOW_DAYS days from inventory_movements:
-  'order' rows are negative, 'order_cancel' rows give units back.
+  'order' rows are negative, 'order_cancel' and 'order_return' rows give units back.
 - The average divides by the days of history the variant really has (at most WINDOW_DAYS,
   at least 1), so a product added a week ago isn't averaged over four weeks.
 - Variants with no sales have no forecast; sold-out ones are already on the stock page.
@@ -50,7 +50,7 @@ async def forecast(conn: asyncpg.Connection, store_id: UUID, within_days: int) -
                  min(m.created_at) filter (where m.reason = 'order') as first_sale
             from inventory_movements m
            where m.store_id = $1
-             and m.reason in ('order', 'order_cancel')
+             and m.reason in ('order', 'order_cancel', 'order_return')
              and m.created_at >= now() - make_interval(days => $2)
            group by m.variant_id
         )

@@ -11,6 +11,8 @@ from uuid import UUID
 
 import asyncpg
 
+from app.services import audit
+
 Rule = Literal[
     "complaint", "discount", "large_order", "allergy_ingredients", "unknown_zone",
     "human_requested", "not_in_data", "order_status", "return_request", "llm_failure",
@@ -47,4 +49,6 @@ async def escalate(conn: asyncpg.Connection, store_id: UUID, conversation_id: UU
         "update conversations set status = 'waiting_owner' where id = $1 and store_id = $2",
         conversation_id, store_id,
     )
+    # The reason only, never the customer's text (3.14).
+    await audit.log(conn, store_id, "bot", "conversation.escalate", conversation_id, after={"rule": rule})
     return CUSTOMER_REPLY.get(rule, DEFAULT_REPLY)
