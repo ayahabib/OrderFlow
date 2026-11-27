@@ -180,6 +180,7 @@ async def post_message(
     if result.duplicate:
         return MessageAck(status="duplicate")  # a retry of a counted message: not counted again
     limiter.record(rules)
+    await handler.alert_owner_if_store_bot_off(conn, result, msg, notifier, settings.dashboard_url, background)
     if result.bot_should_reply:
         async def reply(text: str) -> None:
             await _respond_in_background(db_factory, llm, notifier, settings.dashboard_url,
@@ -208,8 +209,9 @@ async def get_conversation_state(
     session_id = _session(settings, store_id, x_session_token)
     row = await conn.fetchrow(
         """
-        select c.status::text as status, c.bot_paused
+        select c.status::text as status, c.bot_paused or not s.bot_enabled as bot_paused
           from conversations c join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
+          join stores s on s.id = c.store_id
          where c.store_id = $1 and cu.channel = 'web' and cu.external_id = $2
          order by c.last_message_at desc
          limit 1
@@ -217,7 +219,8 @@ async def get_conversation_state(
         store_id, session_id,
     )
     if row is None:
-        return ConversationState(status="none", bot_replies=True)
+        store_bot_on = await conn.fetchval("select bot_enabled from stores where id = $1", store_id)
+        return ConversationState(status="none", bot_replies=bool(store_bot_on))
     replies = not row["bot_paused"] and row["status"] not in ("owner", "waiting_owner")
     return ConversationState(status=row["status"], bot_replies=replies)
 

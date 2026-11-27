@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { BotSwitch } from '../components/BotSwitch'
 import StoreForm from '../components/StoreForm'
 import TelegramChannel from '../components/TelegramChannel'
 import WhatsAppChannel from '../components/WhatsAppChannel'
@@ -22,6 +23,15 @@ export default function SettingsPage() {
   return (
     <section className="stack wide">
       <h1>الإعدادات</h1>
+
+      <h2 id="bot">الرد الآلي</h2>
+      <div className="narrow-block">
+        <p className="muted">
+          لما يكون موقوف، البوت ما بيرد على أي محادثة. كل الرسائل بتنحفظ بالمحادثات، وبيوصلك تنبيه على Telegram بكل رسالة جديدة،
+          والرد بيكون منك. لما يرجع يشتغل، البوت بيرد على الرسائل الجديدة بس.
+        </p>
+        <BotSwitch />
+      </div>
 
       <h2>معلومات المتجر</h2>
       <div className="narrow-block">

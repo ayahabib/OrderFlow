@@ -321,7 +321,7 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 
 كل الـ routes بتتحقق من JWT (Supabase) وبتجيب `store_id` من المستخدم، **مش من الـ request body**.
 
-**إيقاف البوت للمتجر (5.5):** `PATCH /api/stores/me` بـ `bot_enabled`، والتاجر ما بيقدر يشغّله إذا المتجر موقوف من الأدمن.
+**إيقاف البوت للمتجر (5.5):** `PATCH /api/store` بـ `bot_enabled` (ومن 5.2: التاجر ما بيقدر يشغّله إذا المتجر موقوف من الأدمن).
 
 **طلب ربط واتساب (5.4):** `GET/POST /api/channels/whatsapp/request` للتاجر.
 

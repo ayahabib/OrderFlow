@@ -59,16 +59,18 @@ export type Store = {
   currency: string
   phone_country_code: string
   timezone: string
+  bot_enabled: boolean   // store-wide auto-reply switch (task 5.5)
   created_at: string
 }
 
 export type StoreInput = { name: string; phone: string | null; currency: string; phone_country_code: string }
+type StoreUpdate = Partial<StoreInput> & { bot_enabled?: boolean }
 
 export const getMe = () => api<Me>('/api/me')
 export const getStore = () => api<Store>('/api/store')
 export const createStore = (input: StoreInput) =>
   api<Store>('/api/store', { method: 'POST', body: JSON.stringify(input) })
-export const updateStore = (input: Partial<StoreInput>) =>
+export const updateStore = (input: StoreUpdate) =>
   api<Store>('/api/store', { method: 'PATCH', body: JSON.stringify(input) })
 
 // --- products & variants ---

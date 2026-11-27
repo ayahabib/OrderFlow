@@ -31,6 +31,7 @@ class Ingested:
     conversation_id: UUID
     message_id: UUID | None  # None = duplicate, already processed
     bot_should_reply: bool
+    store_bot_off: bool = False  # the owner turned the auto-reply off for the whole store (5.5)
 
     @property
     def duplicate(self) -> bool:
@@ -47,10 +48,29 @@ async def ingest(conn: asyncpg.Connection, msg: InboundMessage) -> Ingested:
         )
         if message_id is not None:
             await db.touch_conversation(conn, msg.store_id, conversation["id"])
+        store_bot_on = await conn.fetchval("select bot_enabled from stores where id = $1", msg.store_id)
 
     # Paused by the owner, or the owner is handling it: store the message, no auto-reply (PRD 4.12).
-    bot_on = not conversation["bot_paused"] and conversation["status"] not in ("owner", "waiting_owner")
-    return Ingested(conversation["id"], message_id, bot_should_reply=message_id is not None and bot_on)
+    # The store-wide switch (5.5) silences every conversation the same way.
+    bot_on = (bool(store_bot_on) and not conversation["bot_paused"]
+              and conversation["status"] not in ("owner", "waiting_owner"))
+    return Ingested(conversation["id"], message_id, bot_should_reply=message_id is not None and bot_on,
+                    store_bot_off=not store_bot_on)
+
+
+async def alert_owner_if_store_bot_off(
+    conn: asyncpg.Connection, result: Ingested, msg: InboundMessage,
+    notifier: notifications.Notifier | None, dashboard_url: str, background,
+) -> None:
+    """Task 5.5: with the auto-reply off, every new customer message alerts the owner.
+
+    `background` is FastAPI's BackgroundTasks: the Telegram call runs after the webhook answers.
+    """
+    if not result.store_bot_off or result.duplicate or notifier is None:
+        return
+    alert = await notifications.bot_off_alert(conn, msg.store_id, result.conversation_id, msg.text, dashboard_url)
+    if alert is not None:
+        background.add_task(notifications.send_quietly, notifier, *alert)
 
 
 async def respond(
@@ -69,7 +89,8 @@ async def respond(
         # so each step sees the state the previous one saved.
         row = await conn.fetchrow(
             """
-            select c.bot_paused or c.status in ('owner', 'waiting_owner') as paused, c.bot_state, c.customer_id,
+            select c.bot_paused or c.status in ('owner', 'waiting_owner') or not s.bot_enabled as paused,
+                   c.bot_state, c.customer_id,
                    cu.phone, s.currency, s.large_order_item_qty, s.large_order_total_qty, s.large_order_amount
               from conversations c
               join customers cu on cu.id = c.customer_id and cu.store_id = c.store_id
@@ -79,7 +100,7 @@ async def respond(
             """,
             conversation_id, store_id,
         )
-        # Re-check: the owner may have paused the bot between ingest and now.
+        # Re-check: the owner may have paused the bot (or the whole store, 5.5) between ingest and now.
         if row is None or row["paused"]:
             return
 

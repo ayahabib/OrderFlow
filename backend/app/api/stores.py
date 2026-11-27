@@ -72,6 +72,7 @@ class StoreUpdate(BaseModel):
     phone: Phone = None
     currency: Currency | None = None
     phone_country_code: CountryCode | None = None
+    bot_enabled: bool | None = None   # store-wide auto-reply switch (task 5.5)
 
 
 class StoreOut(BaseModel):
@@ -81,6 +82,7 @@ class StoreOut(BaseModel):
     currency: str
     phone_country_code: str
     timezone: str
+    bot_enabled: bool
     created_at: datetime
 
 
@@ -113,7 +115,7 @@ async def update_my_store(
 ) -> StoreOut:
     changes = body.model_dump(exclude_unset=True)
     # These are NOT NULL: an explicit null is not allowed.
-    for required in ("name", "currency", "phone_country_code"):
+    for required in ("name", "currency", "phone_country_code", "bot_enabled"):
         if required in changes and changes[required] is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{required} لا يمكن أن يكون فارغاً")
     old = await db.get_store(conn, store_id)

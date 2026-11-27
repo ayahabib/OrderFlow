@@ -102,6 +102,7 @@ async def telegram_webhook(
         customer_name=parsed.customer_name, text=parsed.text, external_message_id=parsed.external_message_id,
     )
     result = await handler.ingest(conn, msg)
+    await handler.alert_owner_if_store_bot_off(conn, result, msg, notifier, settings.dashboard_url, background)
     if result.bot_should_reply:
         async def reply(text: str) -> None:
             await _respond_in_background(db_factory, llm, notifier, settings.dashboard_url, adapter,

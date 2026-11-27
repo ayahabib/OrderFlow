@@ -4,7 +4,7 @@ from uuid import UUID
 
 import asyncpg
 
-STORE_COLUMNS = "id, name, phone, currency, phone_country_code, timezone, created_at"
+STORE_COLUMNS = "id, name, phone, currency, phone_country_code, timezone, bot_enabled, created_at"
 
 
 async def get_store_id_for_owner(conn: asyncpg.Connection, owner_id: UUID) -> UUID | None:
@@ -33,7 +33,7 @@ async def create_store(
 
 
 # Columns the owner may edit from Settings. Anything else is never written.
-EDITABLE_COLUMNS = ("name", "phone", "currency", "phone_country_code")
+EDITABLE_COLUMNS = ("name", "phone", "currency", "phone_country_code", "bot_enabled")  # bot_enabled: 5.5
 
 
 async def update_store(conn: asyncpg.Connection, store_id: UUID, changes: dict) -> asyncpg.Record | None:

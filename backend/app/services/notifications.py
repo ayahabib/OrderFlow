@@ -176,6 +176,39 @@ def build_alert(store_name: str, rule: str | None, question: str, history: list[
     return "\n".join(head + tail)[:_ALERT_CHARS]
 
 
+def build_bot_off_alert(store_name: str, text: str, link: str) -> str:
+    """Alert for a new customer message while the store's auto-reply is off (task 5.5)."""
+    return "\n".join([
+        f"💬 رسالة جديدة - {store_name}",
+        "الرد الآلي موقوف، فالعميل مستني ردّك.",
+        f"رسالة العميل: {_clip(text, _MESSAGE_CHARS)}",
+        "",
+        f"افتح المحادثة: {link}",
+    ])
+
+
+async def bot_off_alert(
+    conn: asyncpg.Connection, store_id: UUID, conversation_id: UUID, text: str, dashboard_url: str,
+) -> tuple[int, str] | None:
+    """(chat_id, alert text) for the owner, or None when the notify bot isn't linked.
+
+    Built inside the webhook (one cheap query) so the slow Telegram call can run in the background.
+    """
+    store = await conn.fetchrow("select name, owner_telegram_chat_id from stores where id = $1", store_id)
+    if store is None or store["owner_telegram_chat_id"] is None:
+        return None
+    link = f"{dashboard_url.rstrip('/')}/conversations/{conversation_id}"
+    return store["owner_telegram_chat_id"], build_bot_off_alert(store["name"], text, link)
+
+
+async def send_quietly(notifier: Notifier, chat_id: int, text: str) -> None:
+    """Background send: a failed alert is logged and never affects the stored message."""
+    try:
+        await notifier.send(chat_id, text)
+    except Exception:
+        log.warning("owner alert not sent (chat alert for a new message)")
+
+
 async def notify_escalation(
     conn: asyncpg.Connection, notifier: Notifier | None, store_id: UUID, conversation_id: UUID, dashboard_url: str,
 ) -> bool:

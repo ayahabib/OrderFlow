@@ -109,6 +109,7 @@ async def whatsapp_webhook(
             customer_name=msg.customer_name, text=msg.text, external_message_id=msg.external_message_id,
         )
         result = await handler.ingest(conn, inbound)
+        await handler.alert_owner_if_store_bot_off(conn, result, inbound, notifier, settings.dashboard_url, background)
         if result.bot_should_reply:
             async def reply(text: str, _adapter=adapter, _store=channel["store_id"],
                             _conv=result.conversation_id, _to=msg.wa_id) -> None:

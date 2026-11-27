@@ -4,6 +4,7 @@ import { signOut, useAuth } from '../auth/AuthProvider'
 import { getLowStock, listConversations, listOrders } from '../lib/api'
 import { useStore } from '../store/StoreProvider'
 import AssistantDrawer from './AssistantDrawer'
+import { BotOffBanner, BotSwitch } from './BotSwitch'
 
 const COUNTS_MS = 30_000
 
@@ -63,6 +64,7 @@ export default function Layout() {
           {store?.name}
           <small>لوحة المتجر</small>
         </div>
+        <BotSwitch className="in-sidebar" />
 
         <nav className="nav-group" aria-label="اليوم">
           <span>اليوم</span>
@@ -94,6 +96,7 @@ export default function Layout() {
       <div className="scrim" onClick={() => setMenuOpen(false)} />
 
       <main className="shell">
+        <BotOffBanner />
         <Outlet />
       </main>
       <AssistantDrawer />
