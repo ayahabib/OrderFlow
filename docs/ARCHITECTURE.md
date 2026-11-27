@@ -321,6 +321,26 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 
 كل الـ routes بتتحقق من JWT (Supabase) وبتجيب `store_id` من المستخدم، **مش من الـ request body**.
 
+**إيقاف البوت للمتجر (5.5):** `PATCH /api/stores/me` بـ `bot_enabled`، والتاجر ما بيقدر يشغّله إذا المتجر موقوف من الأدمن.
+
+**طلب ربط واتساب (5.4):** `GET/POST /api/channels/whatsapp/request` للتاجر.
+
+### API الأدمن (5.2–5.4)
+
+كل `/api/admin/*` عليها dependency `require_admin` (المستخدم موجود بـ `platform_admins`، وإلا 403)، وكل تعديل بيكتب `audit_logs` بـ `actor = 'admin'` و `store_id` تبع المتجر المعني. هون بس مسموح queries على كل المتاجر. الأدمن ما إله endpoints لمحادثات أو بيانات الزبائن.
+
+| Method | Path | وظيفة |
+|---|---|---|
+| GET | `/api/admin/overview?include_demo=false` | أرقام المنصة ورسم النمو (5.3) |
+| GET | `/api/admin/stores` | قائمة المتاجر |
+| POST | `/api/admin/stores/{id}/suspend` / `/unsuspend` | إيقاف/تفعيل متجر |
+| PATCH | `/api/admin/stores/{id}` | `is_demo` |
+| GET | `/api/admin/whatsapp-requests?status=pending` | طلبات ربط واتساب |
+| POST | `/api/admin/whatsapp-requests/{id}/connect` | ربط بـ `phone_number_id` بعد فحص الاتصال |
+| POST | `/api/admin/whatsapp-requests/{id}/reject` | رفض بسبب |
+
+الـ frontend: صفحات `/admin/*` بتظهر بس للأدمن (من `GET /api/me`)، وحماية الـ backend هي الأساس.
+
 ## 10. طبقة الـ LLM
 
 كل الكود الي بيحكي مع OpenAI موجود بـ `llm/` فقط (مكتبة `openai` الرسمية):

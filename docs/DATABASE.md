@@ -397,6 +397,45 @@ create table audit_logs (
 
 إضافة بس: الـ RLS فيها policy قراءة لنفس المتجر، وما في policy تعديل أو حذف.
 
+### 3.11 إدارة المنصة وإيقاف البوت (5.2–5.5، migrations من 0029)
+
+```sql
+-- 5.2: الأدمن. بيتضاف بـ SQL بس، والـ backend بيتحقق منه
+create table platform_admins (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  created_at  timestamptz not null default now()
+);
+alter table platform_admins enable row level security;   -- بدون policies: الـ backend بس بيقرأه
+
+alter type audit_actor add value 'admin';
+
+alter table stores
+  add column suspended_at timestamptz,                   -- 5.2: موقوف من الأدمن (البوت ما بيرد)
+  add column is_demo      boolean not null default false, -- 5.3: ما بينحسب بأرقام المنصة
+  add column bot_enabled  boolean not null default true;  -- 5.5: إيقاف الرد الآلي للمتجر كله
+
+-- 5.4: طلبات ربط واتساب
+create type whatsapp_request_status as enum ('pending', 'connected', 'rejected');
+
+create table whatsapp_requests (
+  id               uuid primary key default gen_random_uuid(),
+  store_id         uuid not null references stores(id) on delete cascade,
+  phone            text not null,          -- E.164
+  display_name     text not null,
+  status           whatsapp_request_status not null default 'pending',
+  phone_number_id  text,                   -- من Meta، بيحطه الأدمن عند الموافقة
+  reject_reason    text,
+  created_at       timestamptz not null default now(),
+  handled_at       timestamptz
+);
+create unique index whatsapp_requests_one_open on whatsapp_requests (store_id) where status = 'pending';
+```
+
+- `whatsapp_requests` عليه نفس policy `store_isolation` (التاجر بيشوف طلباته بس).
+- البوت بيرد بس لما `bot_enabled = true` و `suspended_at is null` و المحادثة مش موقوفة. الشرط بيتفحص بنفس المكانين بـ `engine/handler.py` (قبل المعالجة وبعد الانتظار).
+- رقم واحد ما بينربط بمتجرين: `store_channels.external_id` لواتساب لازم يكون فريد (unique index على `(channel, external_id)`).
+- أرقام داشبورد الأدمن (5.3) queries على كل المتاجر من الـ backend بعد `require_admin`، بدون `store_id`. هاد الاستثناء الوحيد لقاعدة 3، ومحصور بـ `/api/admin/*`. بتستثني `stores.is_demo` والعملاء الي `external_id like 'synthetic-%'`، وبتجمّع المبيعات حسب `stores.currency`.
+
 **حالات الطلب (3.11):** `new → in_progress → shipped → delivered`، والإلغاء قبل التوصيل، و`returned` بعد `delivered` بس. الإلغاء والإرجاع بيرجّعوا المخزون مرة وحدة (`order_cancel` / `order_return`)، والطلبات الملغية والمرتجعة ما بتنحسب مبيعات.
 
 ## 4. رفع Excel مع الـ Variants
