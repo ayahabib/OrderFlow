@@ -68,6 +68,8 @@ If something conflicts or is unclear, ask. Do not silently diverge from the docs
 - Frontend: `cd frontend && npm install && npm run dev` (React + TypeScript + Vite)
 - Webhook tunnel (dev): `ngrok http 8000`, put the https URL in `PUBLIC_BASE_URL`, restart the backend, then (re)connect the Telegram bot in Settings
 - Demo sales history for the forecast: `cd backend && uv run python scripts/seed_sales.py --list`, then `--store <id>` (add) or `--store <id> --clear` (remove)
+- Migrations: `cd backend && uv run python scripts/migrate.py` (`--status` to list applied/pending)
+- Make a platform admin (5.2): in the Supabase SQL editor, `insert into platform_admins (user_id) select id from auth.users where email = '<email>';` (use an account without a store; it then sees `/admin`)
 - Eval: `cd backend && uv run python ../eval/run_eval.py` (extraction), `uv run python ../eval/run_escalation_eval.py --split all` (forced escalation; `--offline` = keywords only, no API), `uv run python ../eval/run_kb_eval.py` (knowledge search with real embeddings), `uv run python ../eval/run_rag_eval.py` (answers from store info vs. hand-over), `uv run python ../eval/run_archive_eval.py` (bot vs. staff replies on archive chats; real model + a rolled-back temp store)
 
 ## Testing and evaluation

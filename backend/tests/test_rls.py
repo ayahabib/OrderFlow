@@ -17,6 +17,7 @@ STORE_TABLES = [
     "delivery_zones", "customers", "conversations", "messages", "orders",
     "order_items", "escalations", "knowledge_base", "offers", "owner_pending_actions",
     "customer_interests",   # 3.12 (audit_logs has a read-only "store_read" policy instead, 3.14)
+    "whatsapp_requests",    # 5.4 (platform_admins: RLS on, no policies, backend only)
 ]
 
 

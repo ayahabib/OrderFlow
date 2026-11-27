@@ -14,7 +14,7 @@ from uuid import UUID
 
 import asyncpg
 
-Actor = Literal["owner", "bot", "system"]
+Actor = Literal["owner", "bot", "system", "admin"]   # admin: platform admin (5.2)
 
 # Body keys never copied into the log: secrets, and free text that may hold customer data.
 SENSITIVE_KEYS = {"token", "bot_token", "access_token", "password", "text", "answer", "content", "credentials", "code"}

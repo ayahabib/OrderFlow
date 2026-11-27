@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     whatsapp_app_secret: SecretStr | None = None     # verifies X-Hub-Signature-256 on every webhook POST
     whatsapp_verify_token: SecretStr | None = None   # answered once when Meta checks the webhook (GET)
     whatsapp_graph_version: str = "v25.0"
+    # Permanent System User token of the platform's Meta business (task 5.4). Numbers the admin
+    # connects on the platform's WABA send with it, instead of a per-store 24-hour token.
+    whatsapp_system_user_token: SecretStr | None = None
     web_chat_secret: SecretStr | None = None  # signs web chat simulator session tokens
     public_base_url: str = "http://localhost:8000"
 

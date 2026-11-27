@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import {
   ApiError,
   connectWhatsAppChannel,
@@ -6,8 +6,10 @@ import {
   getWhatsAppChannel,
   type WhatsAppChannelStatus,
 } from '../lib/api'
+import WhatsAppRequest from './WhatsAppRequest'
 
-/** Connect the store's WhatsApp number over the official Cloud API (task 5.1). */
+/** The store's WhatsApp number over the official Cloud API.
+ * Owners ask the platform admin to connect it (5.4); the manual form (5.1) stays for developers. */
 export default function WhatsAppChannel() {
   const [status, setStatus] = useState<WhatsAppChannelStatus | null>(null)
   const [phoneNumberId, setPhoneNumberId] = useState('')
@@ -16,9 +18,11 @@ export default function WhatsAppChannel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const loadStatus = useCallback(() => {
     getWhatsAppChannel().then(setStatus).catch((e) => setError(e instanceof ApiError ? e.message : 'صار خطأ'))
   }, [])
+
+  useEffect(loadStatus, [loadStatus])
 
   async function connect(e: FormEvent) {
     e.preventDefault()
@@ -70,6 +74,11 @@ export default function WhatsAppChannel() {
         </>
       )}
 
+      {!status.connected && <WhatsAppRequest onConnected={loadStatus} />}
+
+      <details className="guide">
+        <summary>للمطوّرين: ربط يدوي بتطبيق Meta تبع المنصة</summary>
+        <div className="stack">
       {!status.webhook_ready && (
         <p className="msg warn-msg">
           السيرفر لسا مش جاهز يستقبل رسائل واتساب: بده رابط https (ngrok أو النشر) بـ PUBLIC_BASE_URL،
@@ -104,6 +113,8 @@ export default function WhatsAppChannel() {
           </div>
         </form>
       )}
+        </div>
+      </details>
       {!showForm && error && <p className="msg error" role="alert">{error}</p>}
     </div>
   )

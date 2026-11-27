@@ -4,6 +4,7 @@ import { getMe, getStore, type Store } from '../lib/api'
 
 type StoreState = {
   store: Store | null
+  isAdmin: boolean   // platform admin (5.2): sees the admin pages instead of a store
   loading: boolean
   error: string | null
   setStore: (store: Store) => void
@@ -16,6 +17,7 @@ const StoreContext = createContext<StoreState | null>(null)
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const [store, setStore] = useState<Store | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,6 +26,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setError(null)
     try {
       const me = await getMe()
+      setIsAdmin(me.is_admin)
       setStore(me.store_id ? await getStore() : null)
     } catch (e) {
       setError((e as Error).message)
@@ -38,7 +41,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [userId, load])
 
   return (
-    <StoreContext.Provider value={{ store, loading, error, setStore, reload: load }}>
+    <StoreContext.Provider value={{ store, isAdmin, loading, error, setStore, reload: load }}>
       {children}
     </StoreContext.Provider>
   )

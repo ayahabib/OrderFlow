@@ -323,7 +323,9 @@ endpoint منفصل يتحقق من الـ pending action وينفذه (inventor
 
 **إيقاف البوت للمتجر (5.5):** `PATCH /api/store` بـ `bot_enabled` (ومن 5.2: التاجر ما بيقدر يشغّله إذا المتجر موقوف من الأدمن).
 
-**طلب ربط واتساب (5.4):** `GET/POST /api/channels/whatsapp/request` للتاجر.
+**طلب ربط واتساب (5.4):** `GET/POST/DELETE /api/channels/whatsapp/request` للتاجر (عرض آخر طلب، تقديم، إلغاء المفتوح). الرقم بينحفظ E.164 بمفتاح دولة المتجر. الربط اليدوي `POST /api/channels/whatsapp` (5.1) ضل للمطوّرين.
+
+**`GET /api/me`** صار يرجّع `is_admin`، والواجهة بتعرض صفحات `/admin` بس لحساب الأدمن (حساب منفصل عن حسابات المتاجر).
 
 ### API الأدمن (5.2–5.4)
 

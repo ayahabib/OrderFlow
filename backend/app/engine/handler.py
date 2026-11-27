@@ -48,7 +48,9 @@ async def ingest(conn: asyncpg.Connection, msg: InboundMessage) -> Ingested:
         )
         if message_id is not None:
             await db.touch_conversation(conn, msg.store_id, conversation["id"])
-        store_bot_on = await conn.fetchval("select bot_enabled from stores where id = $1", msg.store_id)
+        # Off when the owner switched it off (5.5) or the platform admin suspended the store (5.2).
+        store_bot_on = await conn.fetchval(
+            "select bot_enabled and suspended_at is null from stores where id = $1", msg.store_id)
 
     # Paused by the owner, or the owner is handling it: store the message, no auto-reply (PRD 4.12).
     # The store-wide switch (5.5) silences every conversation the same way.
@@ -89,7 +91,7 @@ async def respond(
         # so each step sees the state the previous one saved.
         row = await conn.fetchrow(
             """
-            select c.bot_paused or c.status in ('owner', 'waiting_owner') or not s.bot_enabled as paused,
+            select c.bot_paused or c.status in ('owner', 'waiting_owner') or not s.bot_enabled or s.suspended_at is not null as paused,
                    c.bot_state, c.customer_id,
                    cu.phone, s.currency, s.large_order_item_qty, s.large_order_total_qty, s.large_order_amount
               from conversations c

@@ -1,6 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthProvider'
 import ActivityPage from './pages/ActivityPage'
+import AdminLayout from './components/AdminLayout'
+import AdminOverviewPage from './pages/AdminOverviewPage'
+import AdminStoresPage from './pages/AdminStoresPage'
+import AdminWhatsAppPage from './pages/AdminWhatsAppPage'
 import Layout from './components/Layout'
 import ConversationsPage from './pages/ConversationsPage'
 import CreateStorePage from './pages/CreateStorePage'
@@ -23,7 +27,7 @@ function Loading() {
 
 /** Logged in: create the store first if there is none, otherwise show the dashboard. */
 function Dashboard() {
-  const { store, loading, error, reload } = useStore()
+  const { store, isAdmin, loading, error, reload } = useStore()
   if (loading) return <Loading />
   if (error) {
     return (
@@ -33,6 +37,19 @@ function Dashboard() {
           <button type="button" onClick={reload}>إعادة المحاولة</button>
         </div>
       </main>
+    )
+  }
+  // A platform admin account (5.2) sees the admin pages only, with or without a store.
+  if (isAdmin) {
+    return (
+      <Routes>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin" element={<AdminOverviewPage />} />
+          <Route path="/admin/stores" element={<AdminStoresPage />} />
+          <Route path="/admin/whatsapp" element={<AdminWhatsAppPage />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Route>
+      </Routes>
     )
   }
   if (!store) return <CreateStorePage />

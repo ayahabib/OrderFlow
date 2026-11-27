@@ -70,7 +70,7 @@ class AuditEntry(BaseModel):
 async def list_audit(
     limit: Annotated[int, Query(ge=1, le=200)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
-    actor: Annotated[str | None, Query(pattern="^(owner|bot|system)$")] = None,
+    actor: Annotated[str | None, Query(pattern="^(owner|bot|system|admin)$")] = None,
     store_id: UUID = Depends(get_current_store_id),
     conn: asyncpg.Connection = Depends(get_db),
 ) -> list[AuditEntry]:

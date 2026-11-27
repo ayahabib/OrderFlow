@@ -4,7 +4,7 @@ from uuid import UUID
 
 import asyncpg
 
-STORE_COLUMNS = "id, name, phone, currency, phone_country_code, timezone, bot_enabled, created_at"
+STORE_COLUMNS = "id, name, phone, currency, phone_country_code, timezone, bot_enabled, suspended_at, created_at"
 
 
 async def get_store_id_for_owner(conn: asyncpg.Connection, owner_id: UUID) -> UUID | None:

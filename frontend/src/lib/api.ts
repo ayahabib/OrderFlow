@@ -50,7 +50,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
-export type Me = { user_id: string; email: string | null; store_id: string | null }
+export type Me = { user_id: string; email: string | null; store_id: string | null; is_admin: boolean }
 
 export type Store = {
   id: string
@@ -60,6 +60,7 @@ export type Store = {
   phone_country_code: string
   timezone: string
   bot_enabled: boolean   // store-wide auto-reply switch (task 5.5)
+  suspended_at: string | null   // suspended by the platform admin (5.2): the bot answers nobody
   created_at: string
 }
 
@@ -539,3 +540,70 @@ export const connectWhatsAppChannel = (phoneNumberId: string, accessToken: strin
     method: 'POST', body: JSON.stringify({ phone_number_id: phoneNumberId, access_token: accessToken }),
   })
 export const disconnectWhatsAppChannel = () => api<WhatsAppChannelStatus>('/api/channels/whatsapp', { method: 'DELETE' })
+
+// --- WhatsApp connection request (owner side, task 5.4) ---
+
+export type WhatsAppRequest = {
+  id: string
+  phone: string
+  display_name: string
+  status: 'pending' | 'connected' | 'rejected'
+  reject_reason: string | null
+  created_at: string
+  handled_at: string | null
+}
+
+export const getWhatsAppRequest = () => api<WhatsAppRequest | null>('/api/channels/whatsapp/request')
+export const createWhatsAppRequest = (input: { phone: string; display_name: string; confirm_not_on_app: boolean }) =>
+  api<WhatsAppRequest>('/api/channels/whatsapp/request', { method: 'POST', body: JSON.stringify(input) })
+export const cancelWhatsAppRequest = () => api<null>('/api/channels/whatsapp/request', { method: 'DELETE' })
+
+// --- platform admin (tasks 5.2-5.4) ---
+
+export type AdminStore = {
+  id: string
+  name: string
+  owner_email: string | null
+  created_at: string
+  currency: string
+  is_demo: boolean
+  suspended_at: string | null
+  bot_enabled: boolean
+  channels: string[]
+  last_activity: string | null
+  orders_count: number
+}
+
+export type AdminOverview = {
+  include_demo: boolean
+  stores_total: number
+  stores_active_30d: number
+  stores_new_this_month: number
+  orders_total: number
+  orders_by_bot: number
+  sales: { currency: string; orders: number; orders_by_bot: number; revenue: string }[]
+  conversations_total: number
+  conversations_handed_over: number
+  bot_share: number | null
+  channels: { channel: string; conversations: number; orders: number }[]
+  top_stores: { id: string; name: string; orders: number }[]
+  period: 'week' | 'month'
+  growth: { start: string; orders: number; new_stores: number; revenue: Record<string, string> }[]
+}
+
+export type AdminWhatsAppRequest = WhatsAppRequest & { store_id: string; store_name: string; phone_number_id: string | null }
+
+export const getAdminOverview = (includeDemo: boolean, period: 'week' | 'month') =>
+  api<AdminOverview>(`/api/admin/overview?include_demo=${includeDemo}&period=${period}`)
+export const listAdminStores = () => api<AdminStore[]>('/api/admin/stores')
+export const setStoreSuspended = (id: string, suspended: boolean) =>
+  api<null>(`/api/admin/stores/${id}/${suspended ? 'suspend' : 'unsuspend'}`, { method: 'POST' })
+export const setStoreDemo = (id: string, isDemo: boolean) =>
+  api<null>(`/api/admin/stores/${id}`, { method: 'PATCH', body: JSON.stringify({ is_demo: isDemo }) })
+export const listAdminWhatsAppRequests = (status: '' | 'pending' | 'connected' | 'rejected') =>
+  api<AdminWhatsAppRequest[]>(`/api/admin/whatsapp-requests${status ? `?status=${status}` : ''}`)
+export const connectWhatsAppRequest = (id: string, phoneNumberId: string) =>
+  api<{ display_phone_number: string | null; verified_name: string | null }>(
+    `/api/admin/whatsapp-requests/${id}/connect`, { method: 'POST', body: JSON.stringify({ phone_number_id: phoneNumberId }) })
+export const rejectWhatsAppRequest = (id: string, reason: string) =>
+  api<null>(`/api/admin/whatsapp-requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) })

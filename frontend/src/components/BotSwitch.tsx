@@ -21,16 +21,18 @@ function useBotSwitch() {
     }
   }
 
-  return { enabled: store?.bot_enabled ?? true, busy, error, setEnabled }
+  // Suspended by the platform admin (5.2): the bot is off whatever the switch says.
+  const suspended = Boolean(store?.suspended_at)
+  return { enabled: (store?.bot_enabled ?? true) && !suspended, suspended, busy, error, setEnabled }
 }
 
 /** On/off switch with its state in words, so it reads without colour. */
 export function BotSwitch({ className = '' }: { className?: string }) {
-  const { enabled, busy, error, setEnabled } = useBotSwitch()
+  const { enabled, suspended, busy, error, setEnabled } = useBotSwitch()
   return (
     <div className={`bot-switch ${enabled ? 'on' : 'off'} ${className}`}>
       <label>
-        <input type="checkbox" role="switch" checked={enabled} disabled={busy}
+        <input type="checkbox" role="switch" checked={enabled} disabled={busy || suspended}
           onChange={(e) => setEnabled(e.target.checked)} />
         <span>الرد الآلي: <strong>{enabled ? 'شغّال' : 'موقوف'}</strong></span>
       </label>
@@ -41,8 +43,18 @@ export function BotSwitch({ className = '' }: { className?: string }) {
 
 /** Shown above every page while the auto-reply is off, so the owner doesn't forget. */
 export function BotOffBanner() {
-  const { enabled, busy, error, setEnabled } = useBotSwitch()
+  const { enabled, suspended, busy, error, setEnabled } = useBotSwitch()
   if (enabled) return null
+  if (suspended) {
+    return (
+      <div className="bot-off-banner suspended" role="status">
+        <span>
+          <strong>المتجر موقوف من إدارة المنصة.</strong> البوت ما بيرد على حدا، والرسائل بتوصلك على المحادثات.
+          تواصل مع الإدارة لإعادة التفعيل.
+        </span>
+      </div>
+    )
+  }
   return (
     <div className="bot-off-banner" role="status">
       <span>

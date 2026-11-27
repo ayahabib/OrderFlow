@@ -83,6 +83,7 @@ class StoreOut(BaseModel):
     phone_country_code: str
     timezone: str
     bot_enabled: bool
+    suspended_at: datetime | None = None   # set by the platform admin (5.2): the bot answers nobody
     created_at: datetime
 
 
@@ -119,6 +120,9 @@ async def update_my_store(
         if required in changes and changes[required] is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"{required} لا يمكن أن يكون فارغاً")
     old = await db.get_store(conn, store_id)
+    if changes.get("bot_enabled") is True and old["suspended_at"] is not None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            detail="المتجر موقوف من إدارة المنصة، فما بينفع تشغّل الرد الآلي هلق.")
     row = await db.update_store(conn, store_id, changes)
     fields = [k for k in changes if k in db.EDITABLE_COLUMNS]
     if fields:

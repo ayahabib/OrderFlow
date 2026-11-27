@@ -10,12 +10,14 @@ from tests.authutil import (
 
 
 class FakeConn:
-    """Stands in for asyncpg.Connection: returns a fixed store_id for fetchval."""
+    """Stands in for asyncpg.Connection: returns a fixed store_id for fetchval (and "not an admin")."""
 
     def __init__(self, store_id):
         self.store_id = store_id
 
     async def fetchval(self, query, *args):
+        if "platform_admins" in query:
+            return False
         return self.store_id
 
 
@@ -60,7 +62,8 @@ async def test_me_returns_store_id_es256():
     async with client_for(FakeConn(store_id)) as c:
         r = await c.get("/api/me", headers=bearer(make_token(user_id, email="owner@example.test")))
     assert r.status_code == 200
-    assert r.json() == {"user_id": str(user_id), "email": "owner@example.test", "store_id": str(store_id)}
+    assert r.json() == {"user_id": str(user_id), "email": "owner@example.test", "store_id": str(store_id),
+                        "is_admin": False}
 
 
 async def test_me_accepts_legacy_hs256():

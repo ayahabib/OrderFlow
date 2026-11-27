@@ -90,6 +90,12 @@ def message_payload(to: str, message: OutboundMessage) -> dict:
     }}
 
 
+def platform_token(settings: Settings) -> str | None:
+    """WHATSAPP_SYSTEM_USER_TOKEN, or None when it isn't set."""
+    token = settings.whatsapp_system_user_token
+    return token.get_secret_value() if token is not None and token.get_secret_value() else None
+
+
 class WhatsAppAdapter:
     channel = "whatsapp"
 
@@ -99,7 +105,12 @@ class WhatsAppAdapter:
 
     @classmethod
     def from_channel(cls, settings: Settings, external_id: str, credentials: str) -> "WhatsAppAdapter":
-        return cls(external_id, decrypt_json(settings, credentials)["access_token"], settings.whatsapp_graph_version)
+        """A number connected with its own token (5.1), or by the admin on the platform's WABA (5.4),
+        which sends with the platform's System User token. KeyError when neither is available."""
+        token = decrypt_json(settings, credentials).get("access_token") or platform_token(settings)
+        if not token:
+            raise KeyError("access_token")
+        return cls(external_id, token, settings.whatsapp_graph_version)
 
     async def send(self, to: str, message: OutboundMessage) -> None:
         # Long summaries with buttons: send the text first, then the buttons with a short prompt.

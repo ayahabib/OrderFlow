@@ -92,6 +92,23 @@ async def get_current_user(
     return await verify_token(creds.credentials, settings)
 
 
+async def is_platform_admin(conn: asyncpg.Connection, user_id: UUID) -> bool:
+    return bool(await conn.fetchval("select exists(select 1 from platform_admins where user_id = $1)", user_id))
+
+
+async def require_admin(
+    user: CurrentUser = Depends(get_current_user),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> CurrentUser:
+    """Platform admin only (task 5.2): 403 for everyone else, store owners included.
+
+    Admin routes are the only ones allowed to read across stores (CLAUDE.md hard rule 3).
+    """
+    if not await is_platform_admin(conn, user.user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="هاي الصفحة لإدارة المنصة بس")
+    return user
+
+
 async def get_current_store_id(
     user: CurrentUser = Depends(get_current_user),
     conn: asyncpg.Connection = Depends(get_db),

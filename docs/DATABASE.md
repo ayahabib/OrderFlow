@@ -397,7 +397,7 @@ create table audit_logs (
 
 إضافة بس: الـ RLS فيها policy قراءة لنفس المتجر، وما في policy تعديل أو حذف.
 
-### 3.11 إدارة المنصة وإيقاف البوت (5.2–5.5، migrations من 0029)
+### 3.11 إدارة المنصة وإيقاف البوت (5.2–5.5، migrations 0029–0034)
 
 ```sql
 -- 5.2: الأدمن. بيتضاف بـ SQL بس، والـ backend بيتحقق منه
@@ -433,7 +433,8 @@ create unique index whatsapp_requests_one_open on whatsapp_requests (store_id) w
 
 - `whatsapp_requests` عليه نفس policy `store_isolation` (التاجر بيشوف طلباته بس).
 - البوت بيرد بس لما `bot_enabled = true` و `suspended_at is null` و المحادثة مش موقوفة. الشرط بيتفحص بنفس المكانين بـ `engine/handler.py` (قبل المعالجة وبعد الانتظار).
-- رقم واحد ما بينربط بمتجرين: `store_channels.external_id` لواتساب لازم يكون فريد (unique index على `(channel, external_id)`).
+- رقم واحد ما بينربط بمتجرين: unique index جزئي على `store_channels (channel, external_id) where is_active` (0034). الجزئي عشان الرقم المفصول بيضل محفوظ وبيقدر متجر تاني يربطه بعدين.
+- الأرقام اللي بيربطها الأدمن بتنحفظ بـ `credentials` بدون توكن (`"via": "platform"`)، والإرسال بيصير بـ `WHATSAPP_SYSTEM_USER_TOKEN`. الأدمن بينضاف بـ SQL: `insert into platform_admins (user_id) select id from auth.users where email = ...`.
 - أرقام داشبورد الأدمن (5.3) queries على كل المتاجر من الـ backend بعد `require_admin`، بدون `store_id`. هاد الاستثناء الوحيد لقاعدة 3، ومحصور بـ `/api/admin/*`. بتستثني `stores.is_demo` والعملاء الي `external_id like 'synthetic-%'`، وبتجمّع المبيعات حسب `stores.currency`.
 
 **حالات الطلب (3.11):** `new → in_progress → shipped → delivered`، والإلغاء قبل التوصيل، و`returned` بعد `delivered` بس. الإلغاء والإرجاع بيرجّعوا المخزون مرة وحدة (`order_cancel` / `order_return`)، والطلبات الملغية والمرتجعة ما بتنحسب مبيعات.

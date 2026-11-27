@@ -6,6 +6,7 @@ transaction: if Telegram refuses, nothing is saved. store_id comes from the toke
 """
 
 import re
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -19,8 +20,10 @@ from app.channels.telegram_api import TelegramAPI, TelegramError
 from app.channels.whatsapp_api import WhatsAppAPI, WhatsAppError
 from app.config import Settings, get_settings
 from app.db import channels as db
+from app.db import whatsapp_requests as requests_db
 from app.db.pool import get_db
 from app.utils.crypto import CryptoError, decrypt_json, encrypt_json
+from app.utils.phone import normalize_phone
 
 router = APIRouter(prefix="/api/channels", tags=["channels"])
 
@@ -230,3 +233,67 @@ async def disconnect_whatsapp(
     """Forget the token; messages to this number are then dropped (the Meta webhook stays, it's platform-wide)."""
     await db.disable_channel(conn, store_id, "whatsapp")
     return _whatsapp_status(settings, False)
+
+
+# --- WhatsApp connection request (task 5.4) ----------------------------------------------------
+# The owner asks; the platform admin adds the number on the platform's WABA and connects it
+# (/api/admin/whatsapp-requests). The phone is saved in E.164 with the store's country code.
+
+class WhatsAppRequestIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    phone: Annotated[str, StringConstraints(strip_whitespace=True, min_length=6, max_length=25)]
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=100)]
+    # The number must not be in use on the WhatsApp app (Meta moves it to the Cloud API).
+    confirm_not_on_app: bool
+
+
+class WhatsAppRequestOut(BaseModel):
+    id: UUID
+    phone: str
+    display_name: str
+    status: str                    # pending | connected | rejected
+    reject_reason: str | None
+    created_at: datetime
+    handled_at: datetime | None
+
+
+def _request_out(row) -> WhatsAppRequestOut:
+    return WhatsAppRequestOut(**{k: row[k] for k in WhatsAppRequestOut.model_fields})
+
+
+@router.get("/whatsapp/request", response_model=WhatsAppRequestOut | None)
+async def get_whatsapp_request(
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> WhatsAppRequestOut | None:
+    """The store's latest request, or null if it never asked."""
+    row = await requests_db.latest_for_store(conn, store_id)
+    return _request_out(row) if row else None
+
+
+@router.post("/whatsapp/request", response_model=WhatsAppRequestOut, status_code=status.HTTP_201_CREATED)
+async def create_whatsapp_request(
+    body: WhatsAppRequestIn,
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> WhatsAppRequestOut:
+    if not body.confirm_not_on_app:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="لازم تأكد إن الرقم مش مستخدم على تطبيق واتساب أو واتساب بزنس.")
+    country = await conn.fetchval("select phone_country_code from stores where id = $1", store_id)
+    phone = normalize_phone(body.phone, country)
+    if phone is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail="رقم الهاتف مش صحيح.")
+    row = await requests_db.create(conn, store_id, phone, body.display_name)
+    if row is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail="في طلب مفتوح من قبل. استنى رد الإدارة أو الغيه.")
+    return _request_out(row)
+
+
+@router.delete("/whatsapp/request", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_whatsapp_request(
+    store_id: UUID = Depends(get_current_store_id),
+    conn: asyncpg.Connection = Depends(get_db),
+) -> None:
+    if not await requests_db.cancel_open(conn, store_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="ما في طلب مفتوح")
